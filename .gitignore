@@ -1,0 +1,8 @@
+/target
+
+# development configurations
+/.vscode
+/.cargo
+
+# test on local
+/examples/testhw
