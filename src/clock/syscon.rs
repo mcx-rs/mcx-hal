@@ -1,42 +1,56 @@
 use crate::pac;
 
-macro_rules! define_peripherals {
+// macro_rules! define_peripheral_clocks {
+//     ( $( [$name:tt, $ahb:expr, $bit:expr] ), +, ) => {
+//         // define_peripherals!(@define_enum $($name,)+);
+//         #[derive(Debug, Clone, Copy)]
+//         pub enum PeripheralClock {
+//             $( $name, )+
+//         }
+
+//         impl PeripheralClock {
+//             pub fn enable(peripheral: PeripheralClock) {
+//                 let syscon = pac::SYSCON0::ptr();
+//                 match peripheral {
+//                     // $(define_peripherals!(@define_match_arm $name, $ahb, $bit))+
+//                     $(
+//                         PeripheralClock::$name => unsafe {
+//                             (*syscon).ahbclkctrlset[$ahb].write(|w| w.bits(1 << $bit));
+//                         },
+//                     )+
+//                 }
+//             }
+
+//             pub fn disable(peripheral: PeripheralClock) {
+//                 let syscon = pac::SYSCON0::ptr();
+//                 match peripheral {
+//                     // $(define_peripherals!(@define_match_arm $name, $ahb, $bit))+
+//                     $(
+//                         PeripheralClock::$name => unsafe {
+//                             (*syscon).ahbclkctrlclr[$ahb].write(|w| w.bits(1 << $bit));
+//                         },
+//                     )+
+//                 }
+//             }
+//         }
+//     };
+// }
+
+macro_rules! define_peripheral_clocks {
     ( $( [$name:tt, $ahb:expr, $bit:expr] ), +, ) => {
-        // define_peripherals!(@define_enum $($name,)+);
-        #[derive(Debug, Clone, Copy)]
-        pub enum Peripherals {
-            $( $name, )+
+        #[non_exhaustive]
+        pub struct PeripheralClock {
+            ahb: u8,
+            bit: u8,
         }
 
-        impl Peripherals {
-            pub fn enable(&self) {
-                let syscon = pac::SYSCON0::ptr();
-                match self {
-                    // $(define_peripherals!(@define_match_arm $name, $ahb, $bit))+
-                    $(
-                        Peripherals::$name => unsafe {
-                            (*syscon).ahbclkctrlset($ahb).write(|w| w.bits(1 << $bit));
-                        },
-                    )+
-                }
-            }
-
-            pub fn disable(&self) {
-                let syscon = pac::SYSCON0::ptr();
-                match self {
-                    // $(define_peripherals!(@define_match_arm $name, $ahb, $bit))+
-                    $(
-                        Peripherals::$name => unsafe {
-                            (*syscon).ahbclkctrlclr($ahb).write(|w| w.bits(1 << $bit));
-                        },
-                    )+
-                }
-            }
+        impl PeripheralClock {
+            $( pub const $name: PeripheralClock = PeripheralClock { ahb: $ahb, bit: $bit }; )+
         }
     };
 }
 
-define_peripherals!(
+define_peripheral_clocks!(
     [ROM, 0, 1],
     [SRAM1, 0, 2],
     [SRAM2, 0, 3],
@@ -47,13 +61,13 @@ define_peripherals!(
     [SRAM7, 0, 8],
     [FMU, 0, 9],
     [FMC, 0, 10],
-    [FlexSPI, 0, 11],
-    [InputMux, 0, 12],
-    [Port0, 0, 13],
-    [Port1, 0, 14],
-    [Port2, 0, 15],
-    [Port3, 0, 16],
-    [Port4, 0, 17],
+    [FLEX_SPI, 0, 11],
+    [INPUT_MUX, 0, 12],
+    [PORT0, 0, 13],
+    [PORT1, 0, 14],
+    [PORT2, 0, 15],
+    [PORT3, 0, 16],
+    [PORT4, 0, 17],
     // missing 0-18
     [GPIO0, 0, 19],
     [GPIO1, 0, 20],
@@ -67,9 +81,9 @@ define_peripherals!(
     [WWDT0, 0, 28],
     [WWDT1, 0, 29],
     // missing 0-30
-    [MailBox, 0, 31],
+    [MAIL_BOX, 0, 31],
     [MRT, 1, 0],
-    [OsTimer, 1, 1],
+    [OS_TIMER, 1, 1],
     [SCT, 1, 2],
     [ADC0, 1, 3],
     [ADC1, 1, 4],
@@ -79,47 +93,47 @@ define_peripherals!(
     [EVSIM0, 1, 8],
     [EVSIM1, 1, 9],
     [UTICK, 1, 10],
-    [LPFlexCOMM0, 1, 11],
-    [LPFlexCOMM1, 1, 12],
-    [LPFlexCOMM2, 1, 13],
-    [LPFlexCOMM3, 1, 14],
-    [LPFlexCOMM4, 1, 15],
-    [LPFlexCOMM5, 1, 16],
-    [LPFlexCOMM6, 1, 17],
-    [LPFlexCOMM7, 1, 18],
-    [LPFlexCOMM8, 1, 19],
-    [LPFlexCOMM9, 1, 20],
+    [LPFLEXCOMM0, 1, 11],
+    [LPFLEXCOMM1, 1, 12],
+    [LPFLEXCOMM2, 1, 13],
+    [LPFLEXCOMM3, 1, 14],
+    [LPFLEXCOMM4, 1, 15],
+    [LPFLEXCOMM5, 1, 16],
+    [LPFLEXCOMM6, 1, 17],
+    [LPFLEXCOMM7, 1, 18],
+    [LPFLEXCOMM8, 1, 19],
+    [LPFLEXCOMM9, 1, 20],
     [MICFIL, 1, 21],
-    [Timer2, 1, 22],
+    [TIMER2, 1, 22],
     [USB0RAM, 1, 23],
     [USB0FSDCD, 1, 24],
     [USB0FS, 1, 25],
-    [Timer0, 1, 26],
-    [Timer1, 1, 27],
+    [TIMER0, 1, 26],
+    [TIMER1, 1, 27],
     // missing 1-28
     [PKCRAM, 1, 29],
     // missing 1-30
-    [SmartDMA, 1, 31],
+    [SMARTDMA, 1, 31],
     [ESPI, 2, 0],
     [DMA1, 2, 1],
     [ENET, 2, 2],
     [USDHC, 2, 3],
-    [FlexIO, 2, 4],
+    [FLEXIO, 2, 4],
     [SAI0, 2, 5],
     [SAI1, 2, 6],
     [TRO, 2, 7],
-    [FreqME, 2, 8],
+    [FREQME, 2, 8],
     // missing 2-9 to 2-12
     [TRNG, 2, 13],
-    [FlexCAN0, 2, 14],
-    [FlexCAN1, 2, 15],
+    [FLEXCAN0, 2, 14],
+    [FLEXCAN1, 2, 15],
     [USBHS, 2, 16],
     [USBHSPHY, 2, 17],
     [CSS, 2, 18],
-    [PowerQUAD, 2, 19],
-    [PLULut, 2, 20],
-    [Timer3, 2, 21],
-    [Timer4, 2, 22],
+    [POWERQUAD, 2, 19],
+    [PLULUT, 2, 20],
+    [TIMER3, 2, 21],
+    [TIMER4, 2, 22],
     [PUF, 2, 23],
     [PKC, 2, 24],
     // missing 2-25
@@ -130,7 +144,7 @@ define_peripherals!(
     [I3C0, 3, 0],
     [I3C1, 3, 1],
     [SINC, 3, 2],
-    [CoolFlux, 3, 3],
+    [COOLFLUX, 3, 3],
     [ENC0, 3, 4],
     [ENC1, 3, 5],
     [PWM0, 3, 6],
@@ -145,8 +159,8 @@ define_peripherals!(
     // missing 3-16, 3-17
     [CMP2, 3, 18],
     [VREF, 3, 19],
-    [CoolFluxAPB, 3, 20],
-    [Neutron, 3, 21],
+    [COOLFLUXAPB, 3, 20],
+    [NEUTRON, 3, 21],
     [TSI, 3, 22],
     [EWM, 3, 23],
     [EIM, 3, 24],
@@ -155,10 +169,18 @@ define_peripherals!(
     [SEMA42, 3, 27],
 );
 
-pub fn enable(peripheral: Peripherals) {
-    peripheral.enable();
-}
+impl PeripheralClock {
+    pub fn enable(peripheral: PeripheralClock) {
+        let syscon = pac::SYSCON0::ptr();
+        unsafe {
+            (*syscon).ahbclkctrlset[peripheral.ahb as usize].write(|w| w.bits(1 << peripheral.bit));
+        }
+    }
 
-pub fn disable(peripheral: Peripherals) {
-    peripheral.disable();
+    pub fn disable(peripheral: PeripheralClock) {
+        let syscon = pac::SYSCON0::ptr();
+        unsafe {
+            (*syscon).ahbclkctrlclr[peripheral.ahb as usize].write(|w| w.bits(1 << peripheral.bit));
+        }
+    }
 }
