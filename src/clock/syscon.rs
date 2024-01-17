@@ -1,41 +1,5 @@
 use crate::pac;
 
-// macro_rules! define_peripheral_clocks {
-//     ( $( [$name:tt, $ahb:expr, $bit:expr] ), +, ) => {
-//         // define_peripherals!(@define_enum $($name,)+);
-//         #[derive(Debug, Clone, Copy)]
-//         pub enum PeripheralClock {
-//             $( $name, )+
-//         }
-
-//         impl PeripheralClock {
-//             pub fn enable(peripheral: PeripheralClock) {
-//                 let syscon = pac::SYSCON0::ptr();
-//                 match peripheral {
-//                     // $(define_peripherals!(@define_match_arm $name, $ahb, $bit))+
-//                     $(
-//                         PeripheralClock::$name => unsafe {
-//                             (*syscon).ahbclkctrlset[$ahb].write(|w| w.bits(1 << $bit));
-//                         },
-//                     )+
-//                 }
-//             }
-
-//             pub fn disable(peripheral: PeripheralClock) {
-//                 let syscon = pac::SYSCON0::ptr();
-//                 match peripheral {
-//                     // $(define_peripherals!(@define_match_arm $name, $ahb, $bit))+
-//                     $(
-//                         PeripheralClock::$name => unsafe {
-//                             (*syscon).ahbclkctrlclr[$ahb].write(|w| w.bits(1 << $bit));
-//                         },
-//                     )+
-//                 }
-//             }
-//         }
-//     };
-// }
-
 macro_rules! define_peripheral_clocks {
     ( $( [$name:tt, $ahb:expr, $bit:expr] ), +, ) => {
         #[non_exhaustive]
