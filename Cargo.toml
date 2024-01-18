@@ -12,7 +12,7 @@ cortex-m-rt = "0.7.3"
 paste = "1.0.14"
 
 # pacs
-mcxn947-pac = { path = "../mcx-pacs/pacs/mcxn947", optional = true }
+mcxn947-pac = { version = "0", optional = true }
 
 [dev-dependencies]
 panic-halt = "0.2.0"

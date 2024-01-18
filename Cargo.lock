@@ -73,6 +73,8 @@ dependencies = [
 [[package]]
 name = "mcxn947-pac"
 version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c4afae178e36d19075e7c797ff296db2424c950bf77e873e0d54593be67effd"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",

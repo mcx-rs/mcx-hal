@@ -137,14 +137,18 @@ impl PeripheralClock {
     pub fn enable(peripheral: PeripheralClock) {
         let syscon = pac::SYSCON0::ptr();
         unsafe {
-            (*syscon).ahbclkctrlset[peripheral.ahb as usize].write(|w| w.bits(1 << peripheral.bit));
+            (*syscon)
+                .ahbclkctrlset(peripheral.ahb as usize)
+                .write(|w| w.bits(1 << peripheral.bit));
         }
     }
 
     pub fn disable(peripheral: PeripheralClock) {
         let syscon = pac::SYSCON0::ptr();
         unsafe {
-            (*syscon).ahbclkctrlclr[peripheral.ahb as usize].write(|w| w.bits(1 << peripheral.bit));
+            (*syscon)
+                .ahbclkctrlclr(peripheral.ahb as usize)
+                .write(|w| w.bits(1 << peripheral.bit));
         }
     }
 }
