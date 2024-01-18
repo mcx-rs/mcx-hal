@@ -7,4 +7,6 @@ pub use syscon::*;
 pub enum Error {
     InvalidFrequency,
     Busy,
+
+    Unknown,
 }
