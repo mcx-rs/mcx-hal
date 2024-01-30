@@ -4,10 +4,11 @@
 //! together.
 //!
 
-use crate::pac::{
-    GPIO0, GPIO1, GPIO2, GPIO3, GPIO4, GPIO5, PORT0, PORT1, PORT2, PORT3, PORT4, PORT5,
-};
+use crate::pac::{GPIO0, GPIO1, GPIO2, GPIO3, GPIO4, PORT0, PORT1, PORT2, PORT3, PORT4};
 use core::{convert::Infallible, marker::PhantomData};
+
+#[cfg(feature = "n947")]
+use crate::pac::{GPIO5, PORT5};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Level {
@@ -92,7 +93,7 @@ macro_rules! gpio {
         ]
     ) => {
         paste::paste! {
-            mod [< port $port_num >] {
+            pub mod [< port $port_num >] {
                 use super::{
                     [< PORT $port_num >] as PORT,
                     [< GPIO $port_num >] as GPIO,
@@ -103,6 +104,18 @@ macro_rules! gpio {
 
                 pub struct Parts {
                     $( pub [< p $pin_num >]: [< P $pin_num >]<Unknown>, )+
+                }
+
+                impl Parts {
+                    pub fn new(_port: PORT, _gpio: GPIO) -> Self {
+                        Self {
+                            $(
+                                [< p $pin_num >]: [< P $pin_num >] {
+                                    _mode: PhantomData,
+                                },
+                            )+
+                        }
+                    }
                 }
 
                 $(
@@ -126,4 +139,54 @@ macro_rules! gpio {
     };
 }
 
-gpio!(0, [1, 2, 3, 4, 5, 6,]);
+pub mod port0 {
+    use super::{
+        Floating, GPIOPin, Input, PhantomData, PullDown, PullUp, Unknown, GPIO0 as GPIO,
+        PORT0 as PORT,
+    };
+    
+    pub struct Parts {}
+}
+
+// gpio!(
+//     0,
+//     [
+//         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+//         26, 27, 28, 29, 30, 31,
+//     ]
+// );
+// gpio!(
+//     1,
+//     [
+//         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+//         26, 27, 28, 29, 30, 31,
+//     ]
+// );
+// gpio!(
+//     2,
+//     [
+//         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+//         26, 27, 28, 29, 30, 31,
+//     ]
+// );
+// gpio!(
+//     3,
+//     [
+//         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+//         26, 27, 28, 29, 30, 31,
+//     ]
+// );
+// gpio!(
+//     4,
+//     [
+//         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+//         26, 27, 28, 29, 30, 31,
+//     ]
+// );
+// gpio!(
+//     5,
+//     [
+//         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+//         26, 27, 28, 29, 30, 31,
+//     ]
+// );
