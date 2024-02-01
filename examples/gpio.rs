@@ -12,7 +12,7 @@ fn main() -> ! {
     let cp = pac::CorePeripherals::take().unwrap();
     let dp = pac::Peripherals::take().unwrap();
 
-    let port0 = hal::gpio::port0::Parts::new(dp.PORT0, dp.GPIO0);
+    let port0 = hal::gpio::port0::split(dp.GPIO0, dp.PORT0);
 
     loop {}
 }
