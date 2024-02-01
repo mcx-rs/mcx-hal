@@ -8,6 +8,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
+pub mod clock;
 pub mod gpio;
 
 pub(crate) mod sealed {
