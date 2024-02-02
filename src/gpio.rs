@@ -78,9 +78,6 @@ const fn get_gpio_ptr(gpio: u8) -> *const GPIORegisterBlock {
 
 macro_rules! gpio {
     (
-        // $port_num: literal, $gpio_num: literal, [
-        //     [$($pin_num: literal, [$($mux: literal),*] $(, $default_mode: ty)?, )+]
-        // ]
         $port_num:literal, $gpio_num:literal, [
             $($pin_num:literal: [$($mux:literal), *], $MODE:ty,)+
         ]
@@ -93,6 +90,7 @@ macro_rules! gpio {
                     Input, Output, Floating, PullDown, PullUp, PushPull, OpenDrain,
                 };
                 use super::Pin;
+                use $crate::clock::PeripheralClocks;
 
                 pub fn split(gpio: GPIO, port: PORT) -> Parts {
                     Parts::new(gpio, port)
@@ -106,6 +104,9 @@ macro_rules! gpio {
 
                 impl Parts {
                     pub fn new(_gpio: GPIO, _port: PORT) -> Self {
+                        // TODO: find a way to properly enable PORT and GPIO clocks
+                        PeripheralClocks::[< GPIO $gpio_num >]::enable();
+                        PeripheralClocks::[< PORT $port_num >]::enable();
                         Self {
                             $(
                                 [< pio $gpio_num _ $pin_num >]: [< PIO $gpio_num _ $pin_num >] {
