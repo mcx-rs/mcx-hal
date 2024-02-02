@@ -1,3 +1,6 @@
+//! # SYSCON based clock control
+//! MCX N Series uses SYSCON to control peripheral clocks.
+
 use crate::pac;
 
 pub trait ClockExt {
@@ -10,6 +13,7 @@ macro_rules! impl_clockext {
     ($([$name:tt, [$(($ahb:expr, $bit:expr),)*]]), +,) => {
         $(
             impl ClockExt for pac::$name {
+                #[inline]
                 fn enable(&self) {
                     let syscon = pac::SYSCON0::ptr();
                     $(
@@ -17,6 +21,7 @@ macro_rules! impl_clockext {
                     )*
                 }
 
+                #[inline]
                 fn disable(&self) {
                     let syscon = pac::SYSCON0::ptr();
                     $(
@@ -25,6 +30,28 @@ macro_rules! impl_clockext {
                 }
             }
         )+
+
+        #[allow(non_snake_case)]
+        pub mod PeripheralClocks {
+            $(
+                #[allow(non_snake_case)]
+                pub mod $name {
+                    pub fn enable() {
+                        let syscon = $crate::pac::SYSCON0::ptr();
+                        $(
+                            unsafe { (*syscon).ahbclkctrlset($ahb).write(|w| w.bits(1 << $bit)); }
+                        )*
+                    }
+
+                    pub fn disable() {
+                        let syscon = $crate::pac::SYSCON0::ptr();
+                        $(
+                            unsafe { (*syscon).ahbclkctrlclr($ahb).write(|w| w.bits(1 << $bit)); }
+                        )*
+                    }
+                }
+            )+
+        }
     };
 }
 
@@ -47,7 +74,7 @@ impl_clockext!(
     // [PORT3, 0, 16],
     // [PORT4, 0, 17],
     // // missing 0-18
-    // [GPIO0, 0, 19],
+    [GPIO0, [(0, 19),]],
     // [GPIO1, 0, 20],
     // [GPIO2, 0, 21],
     // [GPIO3, 0, 22],
@@ -136,7 +163,7 @@ impl_clockext!(
     // [PUF, 2, 23],
     // [PKC0, 2, 24],
     // // missing 2-25
-    // [SCG0, 2, 26],
+    [SCG0, [(2, 26),]],
     // // missing 2-27, 2-28
     // [GDET0, 2, 29],
     // [SM3_0, 2, 30],
