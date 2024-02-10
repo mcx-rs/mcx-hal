@@ -12,7 +12,10 @@ fn main() -> ! {
     let cp = pac::CorePeripherals::take().unwrap();
     let dp = pac::Peripherals::take().unwrap();
 
-    let port0 = hal::gpio::port0::split(dp.GPIO0, dp.PORT0);
+    let gpio0 = hal::gpio::gpio0::split(dp.GPIO0, dp.PORT0);
+
+    let mut pio0_0 = gpio0.pio0_0;
+    let mut pio0_0 = pio0_0.into_mux::<10>();
 
     loop {}
 }

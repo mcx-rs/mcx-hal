@@ -11,7 +11,12 @@
 use crate::pac::{
     gpio0::RegisterBlock as GPIORegisterBlock, port0::RegisterBlock as PORTRegisterBlock,
 };
-use core::marker::PhantomData;
+use core::{convert::Infallible, marker::PhantomData};
+use embedded_hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin};
+
+/// Disabled mode, type state
+/// default mode
+pub struct Disabled;
 
 /// Input mode, type state
 pub struct Input<MODE> {
@@ -23,6 +28,10 @@ pub struct Output<MODE> {
     _mode: PhantomData<MODE>,
 }
 
+pub struct Muxed<MODE, const MUX: u8> {
+    _mode: PhantomData<MODE>,
+}
+
 /// Floating input
 pub struct Floating;
 /// Pulled down input
@@ -31,7 +40,6 @@ pub struct PullDown;
 pub struct PullUp;
 /// Push pull output
 pub struct PushPull;
-
 /// Open drain output
 pub struct OpenDrain;
 
@@ -41,12 +49,52 @@ pub struct Pin<MODE, const PORT: u8> {
 }
 
 impl<MODE, const PORT: u8> Pin<MODE, PORT> {
-    fn pin_id(&self) -> u8 {
+    pub fn pin_id(&self) -> u8 {
         self.num
     }
 
-    fn port_id(&self) -> u8 {
+    pub fn port_id(&self) -> u8 {
         PORT
+    }
+}
+
+impl<MODE, const PORT: u8> ErrorType for Pin<MODE, PORT> {
+    type Error = Infallible;
+}
+
+impl<MODE, const PORT: u8> OutputPin for Pin<Output<MODE>, PORT> {
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        let gpio = get_gpio_ptr(PORT);
+        unsafe { (*gpio).pcor().write(|w| w.bits(1 << self.pin_id())) };
+        Ok(())
+    }
+
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        let gpio = get_gpio_ptr(PORT);
+        unsafe { (*gpio).psor().write(|w| w.bits(1 << self.pin_id())) };
+        Ok(())
+    }
+}
+
+impl<MODE, const PORT: u8> StatefulOutputPin for Pin<Output<MODE>, PORT> {
+    fn is_set_high(&mut self) -> Result<bool, Self::Error> {
+        let gpio = get_gpio_ptr(PORT);
+        Ok(unsafe { (*gpio).pdor().read().bits() & (1 << self.pin_id()) != 0 })
+    }
+
+    fn is_set_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.is_set_high()?)
+    }
+}
+
+impl<MODE, const PORT: u8> InputPin for Pin<Input<MODE>, PORT> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
+        let gpio = get_gpio_ptr(PORT);
+        Ok(unsafe { (*gpio).pdir().read().bits() & (1 << self.pin_id()) != 0 })
+    }
+
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.is_high()?)
     }
 }
 
@@ -83,11 +131,12 @@ macro_rules! gpio {
         ]
     ) => {
         paste::paste! {
-            pub mod [< port $port_num >] {
+            pub mod [< gpio $gpio_num >] {
                 use core::marker::PhantomData;
                 use $crate::pac::{[< GPIO $gpio_num >] as GPIO, [< PORT $port_num >] as PORT};
                 use super::{
-                    Input, Output, Floating, PullDown, PullUp, PushPull, OpenDrain,
+                    Input, Output, Floating, PullDown, PullUp, PushPull, OpenDrain, Disabled, Muxed,
+                    get_port_ptr, get_gpio_ptr,
                 };
                 use super::Pin;
                 use $crate::clock::PeripheralClocks;
@@ -98,7 +147,7 @@ macro_rules! gpio {
 
                 pub struct Parts {
                     $(
-                        pub [< pio $gpio_num _ $pin_num >]: [< PIO $gpio_num _ $pin_num >]<$MODE>,
+                        pub [< pio $gpio_num _ $pin_num >]: [< PIO $gpio_num _ $pin_num >]<Disabled>,
                     )+
                 }
 
@@ -123,11 +172,90 @@ macro_rules! gpio {
                     }
 
                     impl<MODE> [< PIO $gpio_num _ $pin_num >]<MODE> {
-                        pub fn downgrade(self) -> Pin<MODE, $port_num> {
+                        pub fn into_disabled(self) -> [< PIO $gpio_num _ $pin_num >]<Disabled> {
+                            todo!()
+                        }
+
+                        pub fn into_floating_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<Floating>> {
+                            let gpio = get_gpio_ptr($gpio_num);
+                            unsafe { (*gpio).pddr().modify(|_, w| w.[< pdd $pin_num >]().set_bit()) }
+
+                            todo!()
+                        }
+
+                        pub fn into_pull_down_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<PullDown>> {
+                            todo!()
+                        }
+
+                        pub fn into_pull_up_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<PullUp>> {
+                            todo!()
+                        }
+
+                        pub fn into_open_drain_output(self) -> [< PIO $gpio_num _ $pin_num >]<Output<OpenDrain>> {
+                            todo!()
+                        }
+
+                        pub fn into_push_pull_output(self) -> [< PIO $gpio_num _ $pin_num >]<Output<PushPull>> {
+                            todo!()
+                        }
+
+                        pub fn into_mux<const MUX: u8>(self) -> [< PIO $gpio_num _ $pin_num >]<Muxed<MODE, MUX>> {
+                            struct CHECK<const M: u8>;
+                            impl<const M: u8> CHECK<M> {
+                                const MUX_VALUE: u8 = match M {
+                                    $($mux => $mux,)+
+                                    // _ => panic!("MUX value is not available"),
+                                    _ => panic!(concat!("MUX ", stringify!(MUX), " value is not available, available " , stringify!($($mux)*) )),
+                                };
+                            }
+
+                            let port = get_port_ptr($port_num);
+                            unsafe { (*port).pcr(0).modify(|_, w| w.mux().bits(CHECK::<MUX>::MUX_VALUE)) }
+
+                            todo!()
+                        }
+                    }
+
+                    impl<MODE> [< PIO $gpio_num _ $pin_num >]<Output<MODE>> {
+                        pub fn downgrade(self) -> Pin<Output<MODE>, $port_num> {
                             Pin {
                                 num: $pin_num,
-                                _mode: PhantomData,
+                                _mode: self._mode,
                             }
+                        }
+                    }
+                    impl<MODE> [< PIO $gpio_num _ $pin_num >]<Input<MODE>> {
+                        pub fn downgrade(self) -> Pin<Input<MODE>, $port_num> {
+                            Pin {
+                                num: $pin_num,
+                                _mode: self._mode,
+                            }
+                        }
+                    }
+
+                    impl Into<[< PIO $gpio_num _ $pin_num >]<Input<Floating>>> for [< PIO $gpio_num _ $pin_num >]<Disabled> {
+                        fn into(self) -> [< PIO $gpio_num _ $pin_num >]<Input<Floating>> {
+                            self.into_floating_input()
+                        }
+                    }
+                    impl Into<[< PIO $gpio_num _ $pin_num >]<Input<PullDown>>> for [< PIO $gpio_num _ $pin_num >]<Disabled> {
+                        fn into(self) -> [< PIO $gpio_num _ $pin_num >]<Input<PullDown>> {
+                            self.into_pull_down_input()
+                        }
+                    }
+                    impl Into<[< PIO $gpio_num _ $pin_num >]<Input<PullUp>>> for [< PIO $gpio_num _ $pin_num >]<Disabled> {
+                        fn into(self) -> [< PIO $gpio_num _ $pin_num >]<Input<PullUp>> {
+                            self.into_pull_up_input()
+                        }
+                    }
+                    impl Into<[< PIO $gpio_num _ $pin_num >]<Output<OpenDrain>>> for [< PIO $gpio_num _ $pin_num >]<Disabled> {
+                        fn into(self) -> [< PIO $gpio_num _ $pin_num >]<Output<OpenDrain>> {
+                            self.into_open_drain_output()
+                        }
+                    }
+                    impl Into<[< PIO $gpio_num _ $pin_num >]<Output<PushPull>>> for [< PIO $gpio_num _ $pin_num >]<Disabled> {
+                        fn into(self) -> [< PIO $gpio_num _ $pin_num >]<Output<PushPull>> {
+                            self.into_push_pull_output()
                         }
                     }
                 )+
