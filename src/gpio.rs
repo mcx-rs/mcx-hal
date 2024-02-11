@@ -49,10 +49,12 @@ pub struct Pin<MODE, const PORT: u8> {
 }
 
 impl<MODE, const PORT: u8> Pin<MODE, PORT> {
+    /// get the pin number
     pub fn pin_id(&self) -> u8 {
         self.num
     }
 
+    /// get the port number
     pub fn port_id(&self) -> u8 {
         PORT
     }
@@ -167,6 +169,7 @@ macro_rules! gpio {
                 }
 
                 $(
+                    /// GPIO pin
                     pub struct [< PIO $gpio_num _ $pin_num >]<MODE> {
                         _mode: PhantomData<MODE>,
                     }
@@ -176,6 +179,7 @@ macro_rules! gpio {
                             todo!()
                         }
 
+                        /// Configure the pin to floating input
                         pub fn into_floating_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<Floating>> {
                             let gpio = get_gpio_ptr($gpio_num);
                             let port = get_port_ptr($port_num);
@@ -186,6 +190,7 @@ macro_rules! gpio {
                             [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
+                        /// Configure the pin to pull-down input
                         pub fn into_pull_down_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<PullDown>> {
                             let gpio = get_gpio_ptr($gpio_num);
                             let port = get_port_ptr($port_num);
@@ -196,6 +201,7 @@ macro_rules! gpio {
                             [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
+                        /// Configure the pin to pull-up input
                         pub fn into_pull_up_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<PullUp>> {
                             let gpio = get_gpio_ptr($gpio_num);
                             let port = get_port_ptr($port_num);
@@ -206,6 +212,7 @@ macro_rules! gpio {
                             [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
+                        /// Configure the pin to open-drain output
                         pub fn into_open_drain_output(self) -> [< PIO $gpio_num _ $pin_num >]<Output<OpenDrain>> {
                             let gpio = get_gpio_ptr($gpio_num);
                             let port = get_port_ptr($port_num);
@@ -216,6 +223,7 @@ macro_rules! gpio {
                             [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
+                        /// Configure the pin to push-pull output
                         pub fn into_push_pull_output(self) -> [< PIO $gpio_num _ $pin_num >]<Output<PushPull>> {
                             let gpio = get_gpio_ptr($gpio_num);
                             let port = get_port_ptr($port_num);
@@ -226,6 +234,7 @@ macro_rules! gpio {
                             [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
+                        /// Configure the pin to alternate function
                         pub fn into_mux<const MUX: u8>(self) -> [< PIO $gpio_num _ $pin_num >]<Muxed<MODE, MUX>> {
                             struct CHECK<const M: u8>;
                             impl<const M: u8> CHECK<M> {
