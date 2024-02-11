@@ -44,8 +44,8 @@ pub struct PushPull;
 pub struct OpenDrain;
 
 pub struct Pin<MODE, const PORT: u8> {
-    num: u8,
-    _mode: PhantomData<MODE>,
+    pub(crate) num: u8,
+    pub(crate) _mode: PhantomData<MODE>,
 }
 
 impl<MODE, const PORT: u8> Pin<MODE, PORT> {
@@ -98,7 +98,7 @@ impl<MODE, const PORT: u8> InputPin for Pin<Input<MODE>, PORT> {
     }
 }
 
-const fn get_port_ptr(port: u8) -> *const PORTRegisterBlock {
+pub(crate) const fn get_port_ptr(port: u8) -> *const PORTRegisterBlock {
     // TODO: use cfg attr to check port number
     match port {
         0 => crate::pac::PORT0::ptr(),
@@ -111,7 +111,7 @@ const fn get_port_ptr(port: u8) -> *const PORTRegisterBlock {
     }
 }
 
-const fn get_gpio_ptr(gpio: u8) -> *const GPIORegisterBlock {
+pub(crate) const fn get_gpio_ptr(gpio: u8) -> *const GPIORegisterBlock {
     // TODO: use cfg attr to check gpio number
     match gpio {
         0 => crate::pac::GPIO0::ptr(),
@@ -134,11 +134,11 @@ macro_rules! gpio {
             pub mod [< gpio $gpio_num >] {
                 use core::marker::PhantomData;
                 use $crate::pac::{[< GPIO $gpio_num >] as GPIO, [< PORT $port_num >] as PORT};
-                use super::{
+                use $crate::gpio::{
                     Input, Output, Floating, PullDown, PullUp, PushPull, OpenDrain, Disabled, Muxed,
                     get_port_ptr, get_gpio_ptr,
                 };
-                use super::Pin;
+                use $crate::gpio::Pin;
                 use $crate::clock::PeripheralClocks;
 
                 pub fn split(gpio: GPIO, port: PORT) -> Parts {
@@ -178,25 +178,52 @@ macro_rules! gpio {
 
                         pub fn into_floating_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<Floating>> {
                             let gpio = get_gpio_ptr($gpio_num);
-                            unsafe { (*gpio).pddr().modify(|_, w| w.[< pdd $pin_num >]().set_bit()) }
+                            let port = get_port_ptr($port_num);
 
-                            todo!()
+                            unsafe { (*gpio).pddr().modify(|_, w| w.[< pdd $pin_num >]().clear_bit()) }
+                            unsafe { (*port).pcr($pin_num).modify(|_, w| w.pe().clear_bit().mux().bits(0)) }
+
+                            [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
                         pub fn into_pull_down_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<PullDown>> {
-                            todo!()
+                            let gpio = get_gpio_ptr($gpio_num);
+                            let port = get_port_ptr($port_num);
+
+                            unsafe { (*gpio).pddr().modify(|_, w| w.[< pdd $pin_num >]().clear_bit()) }
+                            unsafe { (*port).pcr($pin_num).modify(|_, w| w.pe().set_bit().ps().clear_bit().ode().clear_bit().mux().bits(0)) }
+
+                            [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
                         pub fn into_pull_up_input(self) -> [< PIO $gpio_num _ $pin_num >]<Input<PullUp>> {
-                            todo!()
+                            let gpio = get_gpio_ptr($gpio_num);
+                            let port = get_port_ptr($port_num);
+
+                            unsafe { (*gpio).pddr().modify(|_, w| w.[< pdd $pin_num >]().clear_bit()) }
+                            unsafe { (*port).pcr($pin_num).modify(|_, w| w.pe().set_bit().ps().set_bit().ode().clear_bit().mux().bits(0)) }
+
+                            [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
                         pub fn into_open_drain_output(self) -> [< PIO $gpio_num _ $pin_num >]<Output<OpenDrain>> {
-                            todo!()
+                            let gpio = get_gpio_ptr($gpio_num);
+                            let port = get_port_ptr($port_num);
+
+                            unsafe { (*gpio).pddr().modify(|_, w| w.[< pdd $pin_num >]().set_bit()) }
+                            unsafe { (*port).pcr($pin_num).modify(|_, w| w.pe().clear_bit().ode().set_bit().mux().bits(0)) }
+
+                            [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
                         pub fn into_push_pull_output(self) -> [< PIO $gpio_num _ $pin_num >]<Output<PushPull>> {
-                            todo!()
+                            let gpio = get_gpio_ptr($gpio_num);
+                            let port = get_port_ptr($port_num);
+
+                            unsafe { (*gpio).pddr().modify(|_, w| w.[< pdd $pin_num >]().set_bit()) }
+                            unsafe { (*port).pcr($pin_num).modify(|_, w| w.pe().clear_bit().ode().clear_bit().mux().bits(0)) }
+
+                            [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
 
                         pub fn into_mux<const MUX: u8>(self) -> [< PIO $gpio_num _ $pin_num >]<Muxed<MODE, MUX>> {
@@ -212,7 +239,7 @@ macro_rules! gpio {
                             let port = get_port_ptr($port_num);
                             unsafe { (*port).pcr(0).modify(|_, w| w.mux().bits(CHECK::<MUX>::MUX_VALUE)) }
 
-                            todo!()
+                            [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
                     }
 
@@ -263,7 +290,6 @@ macro_rules! gpio {
         }
     };
 }
+pub(crate) use gpio;
 
-gpio!(0, 0, [
-    0: [0, 1, 2], Input<Floating>,
-]);
+pub use crate::chip::gpio::*;

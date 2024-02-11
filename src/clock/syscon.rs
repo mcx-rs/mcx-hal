@@ -12,6 +12,7 @@ pub trait ClockExt {
 macro_rules! impl_clockext {
     ($([$name:tt, [$(($ahb:expr, $bit:expr),)*]]), +,) => {
         $(
+            #[allow(unused_variables)]
             impl ClockExt for pac::$name {
                 #[inline]
                 fn enable(&self) {
@@ -34,7 +35,7 @@ macro_rules! impl_clockext {
         #[allow(non_snake_case)]
         pub mod PeripheralClocks {
             $(
-                #[allow(non_snake_case)]
+                #[allow(non_snake_case, unused_variables)]
                 pub mod $name {
                     pub fn enable() {
                         let syscon = $crate::pac::SYSCON0::ptr();
@@ -69,16 +70,18 @@ impl_clockext!(
     [FLEXSPI0, [(0, 11),]],
     [INPUTMUX0, [(0, 12),]],
     [PORT0, [(0, 13),]],
-    // [PORT1, 0, 14],
-    // [PORT2, 0, 15],
-    // [PORT3, 0, 16],
-    // [PORT4, 0, 17],
+    [PORT1, [(0, 14),]],
+    [PORT2, [(0, 15),]],
+    [PORT3, [(0, 16),]],
+    [PORT4, [(0, 17),]],
+    [PORT5, []],
     // // missing 0-18
     [GPIO0, [(0, 19),]],
-    // [GPIO1, 0, 20],
-    // [GPIO2, 0, 21],
-    // [GPIO3, 0, 22],
-    // [GPIO4, 0, 23],
+    [GPIO1, [(0, 20),]],
+    [GPIO2, [(0, 21),]],
+    [GPIO3, [(0, 22),]],
+    [GPIO4, [(0, 23),]],
+    [GPIO5, []],
     // // missing 0-24
     // [PINT0, 0, 25],
     // [DMA0, 0, 26],

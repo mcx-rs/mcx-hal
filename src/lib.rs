@@ -1,7 +1,9 @@
 #![no_std]
 
-#[cfg(feature = "n947")]
-pub use mcxn947_pac as pac;
+#[cfg_attr(feature = "n947", path = "chip/n947.rs")]
+mod chip;
+
+pub use chip::pac;
 
 pub mod clock;
 pub mod gpio;
