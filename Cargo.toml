@@ -7,9 +7,10 @@ authors = ["Logiase Song <logiase.songs@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cortex-m = "0.7.7"
+cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7.3"
 paste = "1.0.14"
+embedded-hal = "1"
 
 # pacs
 mcxn947-pac = { path = "../mcx-pacs/pacs/mcxn947", optional = true }
@@ -18,5 +19,6 @@ mcxn947-pac = { path = "../mcx-pacs/pacs/mcxn947", optional = true }
 panic-halt = "0.2.0"
 
 [features]
-n947 = ["dep:mcxn947-pac"]
-n947rt = ["n947", "mcxn947-pac/rt"]
+n947 = ["dep:mcxn947-pac", "device_selected"]
+
+device_selected = []
