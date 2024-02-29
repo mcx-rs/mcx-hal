@@ -1,7 +1,7 @@
 //! # SYSCON based clock control
 //! MCX N Series uses SYSCON to control peripheral clocks.
 
-pub trait ClockExt {
+pub trait ClockExt: crate::sealed::Sealed {
     /// enable Peripheral clock
     fn enable(&self);
 
@@ -14,7 +14,11 @@ pub trait ClockExt {
 /// TODO: add a virtual tag for virtual peripheral which does not have a clock control
 macro_rules! impl_clockext {
     ($([$name:tt, [$(($ahb:expr, $bit:expr),)*]]), +,) => {
+        use $crate::sealed::Sealed;
+
         $(
+            impl Sealed for $crate::pac::$name {}
+
             #[allow(unused_variables)]
             impl ClockExt for $crate::pac::$name {
                 #[inline]
