@@ -1,6 +1,8 @@
 //! # SCG
 //! System Clock Generator
 
+// TODO: move chip relatived things to chip module
+
 use crate::{
     pac::{self, SCG0},
     power::{self, RunMode},
@@ -67,26 +69,24 @@ impl Config {
         Self::default()
     }
 
-    pub fn set_system_clock_source(mut self, source: MainClockSource) -> Self {
+    pub fn set_main_clock_source(&mut self, source: MainClockSource) {
         self.main_clock_source = source;
-        self
     }
 
-    pub fn use_sosc(self) -> Self {
-        self.set_system_clock_source(MainClockSource::SOSC)
+    pub fn use_sosc(&mut self) {
+        self.set_main_clock_source(MainClockSource::SOSC);
     }
 
-    pub fn use_sirc(self) -> Self {
-        self.set_system_clock_source(MainClockSource::SIRC)
+    pub fn use_sirc(&mut self) {
+        self.set_main_clock_source(MainClockSource::SIRC);
     }
 
-    pub fn use_firc(self) -> Self {
-        self.set_system_clock_source(MainClockSource::FIRC)
+    pub fn use_firc(&mut self) {
+        self.set_main_clock_source(MainClockSource::FIRC);
     }
 
-    pub fn set_firc_range(mut self, range: Option<FIRCRange>) -> Self {
+    pub fn set_firc_range(&mut self, range: Option<FIRCRange>) {
         self.firc_range = range;
-        self
     }
 
     pub fn is_valid(&self) -> bool {
