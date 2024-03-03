@@ -1,10 +1,14 @@
 //! # SCG
+//! System Clock Generator
 
-use crate::pac::SCG0;
+use crate::{
+    pac::{self, SCG0},
+    power::{self, RunMode},
+};
 
 /// System Clock Source
 #[derive(Clone, Copy, Debug)]
-pub enum SystemClockSource {
+pub enum MainClockSource {
     SOSC,
     SIRC,
     FIRC,
@@ -24,22 +28,32 @@ pub enum SOSCMode {
     Oscillator(u32),
 }
 
+/// FIRC Frequency select
 #[derive(Clone, Copy, Debug)]
 pub enum FIRCRange {
     FIRC144M,
     FIRC48M,
 }
 
+/// Clocks Configuration
 #[derive(Clone, Copy, Debug)]
 pub struct Config {
+    /// SOSC Mode
     pub sosc_mode: Option<SOSCMode>,
+    /// FIRC range
     pub firc_range: Option<FIRCRange>,
 
-    pub system_clock_source: SystemClockSource,
+    /// Main Clock source selection
+    pub main_clock_source: MainClockSource,
 
+    /// enable SIRC clock to peripherals
     pub sirc_clk_periph_en: bool,
+    /// enable FIRC FCLK to peripherals
     pub firc_fclk_periph_en: bool,
+    /// enable FIRC SCLK to peripherals
     pub firc_sclk_periph_en: bool,
+
+    pub ahbclkdiv: u8,
 }
 
 impl Default for Config {
@@ -53,21 +67,21 @@ impl Config {
         Self::default()
     }
 
-    pub fn set_system_clock_source(mut self, source: SystemClockSource) -> Self {
-        self.system_clock_source = source;
+    pub fn set_system_clock_source(mut self, source: MainClockSource) -> Self {
+        self.main_clock_source = source;
         self
     }
 
     pub fn use_sosc(self) -> Self {
-        self.set_system_clock_source(SystemClockSource::SOSC)
+        self.set_system_clock_source(MainClockSource::SOSC)
     }
 
     pub fn use_sirc(self) -> Self {
-        self.set_system_clock_source(SystemClockSource::SIRC)
+        self.set_system_clock_source(MainClockSource::SIRC)
     }
 
     pub fn use_firc(self) -> Self {
-        self.set_system_clock_source(SystemClockSource::FIRC)
+        self.set_system_clock_source(MainClockSource::FIRC)
     }
 
     pub fn set_firc_range(mut self, range: Option<FIRCRange>) -> Self {
@@ -77,14 +91,14 @@ impl Config {
 
     pub fn is_valid(&self) -> bool {
         // Check System Clock
-        match self.system_clock_source {
-            SystemClockSource::SIRC => {}
-            SystemClockSource::FIRC => {
+        match self.main_clock_source {
+            MainClockSource::SIRC => {}
+            MainClockSource::FIRC => {
                 if self.firc_range.is_none() {
                     return false;
                 }
             }
-            SystemClockSource::SOSC => {
+            MainClockSource::SOSC => {
                 if self.sosc_mode.is_none() {
                     return false;
                 }
@@ -151,6 +165,23 @@ impl Config {
         }
     }
 
+    pub fn get_main_clk(&self) -> Option<u32> {
+        match self.main_clock_source {
+            MainClockSource::SOSC => self.get_sosc_clk(),
+            MainClockSource::FIRC => self.get_firc_clk(),
+            MainClockSource::SIRC => self.get_sirc_12mhz(),
+            MainClockSource::Stop => None,
+            _ => todo!(),
+        }
+    }
+
+    pub fn get_system_clk(&self) -> Option<u32> {
+        match self.get_main_clk() {
+            Some(clk) => Some(clk / self.ahbclkdiv as u32),
+            None => None,
+        }
+    }
+
     fn sosc_range(&self) -> u8 {
         let freq = match self.sosc_mode {
             None => {
@@ -177,30 +208,41 @@ impl Config {
 
 pub struct Clocks {
     rb: SCG0,
+    run_mode: power::RunMode,
+
+    pub config: Config,
 }
 
 impl Clocks {
     pub fn constrain(scg: SCG0) -> Self {
-        Self { rb: scg }
+        Self {
+            rb: scg,
+            config: Config::default(),
+            run_mode: power::RunMode::MidDrive,
+        }
     }
 
-    pub fn freeze(&mut self, config: &Config) {
-        assert!(config.is_valid());
-        self.setup_sosc(config);
-        self.setup_irc(config);
+    pub fn use_config(&mut self, config: Config) {
+        self.config = config;
+    }
 
-        match config.system_clock_source {
-            SystemClockSource::SOSC => {
-                assert!(config.sosc_mode.is_some());
+    pub fn freeze(&mut self) {
+        assert!(self.config.is_valid());
+        self.setup_sosc();
+        self.setup_irc();
+
+        match self.config.main_clock_source {
+            MainClockSource::SOSC => {
+                assert!(self.config.sosc_mode.is_some());
                 self.rb.rccr().modify(|_r, w| w.scs().sosc());
                 while !self.rb.csr().read().scs().is_sosc() {}
             }
-            SystemClockSource::SIRC => {
+            MainClockSource::SIRC => {
                 self.rb.rccr().modify(|_r, w| w.scs().sirc());
                 while !self.rb.csr().read().scs().is_sirc() {}
             }
-            SystemClockSource::FIRC => {
-                assert!(config.firc_range.is_some());
+            MainClockSource::FIRC => {
+                assert!(self.config.firc_range.is_some());
                 self.rb.rccr().modify(|_r, w| w.scs().firc());
                 while !self.rb.csr().read().scs().is_firc() {}
             }
@@ -208,29 +250,76 @@ impl Clocks {
                 todo!()
             }
         }
+
+        let run_mode = match self.config.get_system_clk().unwrap() {
+            0..=50_000_000u32 => RunMode::MidDrive,
+            50_000_001u32..=100_000_000u32 => RunMode::StandardDrive,
+            100_000_001u32..=150_000_000u32 => RunMode::OverDrive,
+            _ => panic!(),
+        };
+        self.setup_run_mode(run_mode);
+        self.run_mode = run_mode;
     }
 
-    fn setup_sosc(&mut self, config: &Config) {
-        let sosc_mode = match config.sosc_mode {
+    pub fn get_current_run_mode(&self) -> power::RunMode {
+        self.run_mode
+    }
+
+    fn setup_run_mode(&mut self, run_mode: power::RunMode) {
+        assert!(run_mode != power::RunMode::UnderDrive);
+        if run_mode == self.run_mode {
+            return;
+        }
+        if run_mode > self.run_mode {
+            Self::increase_run_mode(run_mode, self.config.get_main_clk().unwrap());
+        } else {
+            Self::decrease_run_mode(run_mode, self.config.get_main_clk().unwrap());
+        }
+    }
+
+    fn increase_run_mode(run_mode: power::RunMode, clk: u32) {
+        let spc = unsafe { pac::SPC0::steal() };
+        spc.active_cfg().modify(|_r, w| unsafe {
+            w.coreldo_vdd_lvl()
+                .bits(run_mode as u8)
+                .dcdc_vdd_lvl()
+                .bits(run_mode as u8)
+        });
+        while spc.sc().read().busy().is_busy_yes() {}
+        Self::setup_flash_access_cycles(run_mode, clk);
+        spc.sramctl()
+            .modify(|_r, w| unsafe { w.vsm().bits(run_mode as u8) });
+        spc.sramctl().modify(|_r, w| w.req().req_yes());
+        while spc.sramctl().read().ack().is_ack_no() {}
+        spc.sramctl().modify(|_r, w| w.req().req_no());
+    }
+
+    fn decrease_run_mode(run_mode: power::RunMode, clk: u32) {
+        let spc = unsafe { pac::SPC0::steal() };
+        Self::setup_flash_access_cycles(run_mode, clk);
+        spc.sramctl()
+            .modify(|_r, w| unsafe { w.vsm().bits(run_mode as u8) });
+        spc.sramctl().modify(|_r, w| w.req().req_yes());
+        while spc.sramctl().read().ack().is_ack_no() {}
+        spc.sramctl().modify(|_r, w| w.req().req_no());
+        spc.active_cfg().modify(|_r, w| unsafe {
+            w.coreldo_vdd_lvl()
+                .bits(run_mode as u8)
+                .dcdc_vdd_lvl()
+                .bits(run_mode as u8)
+        });
+        while spc.sc().read().busy().is_busy_yes() {}
+    }
+
+    fn setup_sosc(&mut self) {
+        let sosc_mode = match self.config.sosc_mode {
             None => {
                 return;
             }
             Some(val) => val,
         };
-        let freq = match sosc_mode {
-            SOSCMode::Oscillator(freq) => freq,
-            SOSCMode::RefClock(freq) => freq,
-        };
-        assert!(16_000_000u32 <= freq && freq <= 66_000_000u32);
-        let range: u8 = if 16_000_000u32 <= freq && freq < 20_000_000u32 {
-            0
-        } else if 20_000_000u32 <= freq && freq < 30_000_000u32 {
-            1
-        } else if 30_000_000u32 <= freq && freq < 50_000_000u32 {
-            2
-        } else {
-            3
-        };
+        let range = self.config.sosc_range();
+        assert!(range != u8::max_value());
 
         self.rb.ldocsr().modify(|_r, w| w.ldoen().enabled());
         self.rb.sosccfg().modify(|_r, w| {
@@ -248,9 +337,9 @@ impl Clocks {
         self.rb.sosccsr().modify(|_r, w| w.lk().write_disabled());
     }
 
-    fn setup_irc(&mut self, config: &Config) {
+    fn setup_irc(&mut self) {
         self.rb.sirccsr().modify(|_r, w| w.lk().write_enabled());
-        if config.sirc_clk_periph_en {
+        if self.config.sirc_clk_periph_en {
             self.rb
                 .sirccsr()
                 .modify(|_r, w| w.sirc_clk_periph_en().enabled());
@@ -266,7 +355,7 @@ impl Clocks {
         self.rb.sirccsr().modify(|_r, w| w.lk().write_disabled());
 
         self.rb.firccfg().modify(|_r, w| {
-            match config.firc_range {
+            match self.config.firc_range {
                 Some(FIRCRange::FIRC144M) => {
                     w.range().firc_144mhz();
                 }
@@ -279,13 +368,13 @@ impl Clocks {
         });
         self.rb.firccsr().modify(|_r, w| w.lk().write_enabled());
         self.rb.firccsr().modify(|_r, w| {
-            if config.firc_sclk_periph_en {
+            if self.config.firc_sclk_periph_en {
                 w.firc_sclk_periph_en().enabled();
             }
-            if config.firc_fclk_periph_en {
+            if self.config.firc_fclk_periph_en {
                 w.firc_fclk_periph_en().enabled();
             }
-            if config.firc_range.is_some() {
+            if self.config.firc_range.is_some() {
                 w.fircen().enabled();
             }
             w
@@ -299,5 +388,31 @@ impl Clocks {
         {}
         assert!(self.rb.firccsr().read().fircerr().is_error_not_detected());
         self.rb.firccsr().modify(|_r, w| w.lk().write_disabled());
+    }
+
+    fn setup_flash_access_cycles(run_mode: power::RunMode, clk: u32) {
+        unsafe {
+            pac::FMU0::steal().fctrl().modify(|_r, w| match run_mode {
+                power::RunMode::MidDrive => match clk {
+                    0..=24_000_000u32 => w.rwsc().bits(0),
+                    24_000_001u32..=50_000_000u32 => w.rwsc().bits(1),
+                    _ => panic!(),
+                },
+                power::RunMode::StandardDrive => match clk {
+                    0..=36_000_000u32 => w.rwsc().bits(0),
+                    36_000_001u32..=64_000_000u32 => w.rwsc().bits(1),
+                    64_000_001u32..=100_000_000u32 => w.rwsc().bits(2),
+                    _ => panic!(),
+                },
+                power::RunMode::OverDrive => match clk {
+                    0..=36_000_000u32 => w.rwsc().bits(0),
+                    36_000_001u32..=64_000_000u32 => w.rwsc().bits(1),
+                    64_000_001u32..=100_000_000u32 => w.rwsc().bits(2),
+                    100_000_001u32..=150_000_000u32 => w.rwsc().bits(3),
+                    _ => panic!(),
+                },
+                _ => panic!(),
+            })
+        };
     }
 }
