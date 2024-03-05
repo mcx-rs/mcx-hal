@@ -246,7 +246,7 @@ macro_rules! gpio {
                             }
 
                             let port = get_port_ptr($port_num);
-                            unsafe { (*port).pcr(0).modify(|_, w| w.mux().bits(CHECK::<MUX>::MUX_VALUE)) }
+                            unsafe { (*port).pcr($pin_num).modify(|_, w| w.mux().bits(CHECK::<MUX>::MUX_VALUE)) }
 
                             [< PIO $gpio_num _ $pin_num >] { _mode: PhantomData }
                         }
