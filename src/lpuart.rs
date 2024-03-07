@@ -124,6 +124,6 @@ macro_rules! lpuart {
 
 // use crate::gpio::Muxed
 
-lpuart!(
-    [lpuart4, LPUART4, @RxPins: [(PIO1_8, 2),], @TxPins: [(PIO1_9, 2),]],
-);
+// lpuart!(
+//     [lpuart4, LPUART4, @RxPins: [(PIO1_8, 2),], @TxPins: [(PIO1_9, 2),]],
+// );
