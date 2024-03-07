@@ -69,6 +69,36 @@ impl Config {
         Self::default()
     }
 
+    pub const fn new_fro12m() -> Self {
+        Self {
+            sosc_mode: None,
+            firc_range: None,
+
+            main_clock_source: MainClockSource::SIRC,
+
+            sirc_clk_periph_en: true,
+            firc_fclk_periph_en: false,
+            firc_sclk_periph_en: false,
+
+            ahbclkdiv: 0,
+        }
+    }
+
+    pub const fn new_frohf48m() -> Self {
+        Self {
+            sosc_mode: None,
+            firc_range: Some(FIRCRange::FIRC48M),
+
+            main_clock_source: MainClockSource::FIRC,
+
+            sirc_clk_periph_en: true,
+            firc_fclk_periph_en: false,
+            firc_sclk_periph_en: false,
+
+            ahbclkdiv: 0,
+        }
+    }
+
     pub fn set_main_clock_source(&mut self, source: MainClockSource) {
         self.main_clock_source = source;
     }
