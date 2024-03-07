@@ -8,17 +8,26 @@ authors = ["Logiase Song <logiase.songs@gmail.com>"]
 
 [dependencies]
 cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
-cortex-m-rt = "0.7.3"
-paste = "1.0.14"
-embedded-hal = "1"
+cortex-m-rt = { version = "0.7.3" }
+paste = { version = "1.0.14" }
+embedded-hal = { version = "1" }
+embedded-io = { version = "0.6.1", optional = true }
+critical-section = { version = "1.0" }
+cfg-if = { version = "0.1" }
 
 # pacs
 mcxn947-pac = { version = "0.0", optional = true }
 
 [dev-dependencies]
-panic-halt = "0.2.0"
+panic-halt = { version = "0.2.0" }
 
 [features]
-n947 = ["dep:mcxn947-pac", "device_selected"]
+n947 = ["dep:mcxn947-pac", "_device-selected"]
 
-device_selected = []
+rt = ["mcxn947-pac?/rt"]
+
+# Critical Section implementation
+critical-section-mailbox = []
+critical-section-single-core = ["cortex-m/critical-section-single-core"]
+
+_device-selected = []

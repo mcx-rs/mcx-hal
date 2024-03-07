@@ -18,6 +18,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46afbd2983a5d5a7bd740ccb198caf5b82f45c40c09c0eed36052d91cb92e719"
 
 [[package]]
+name = "cfg-if"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
+
+[[package]]
 name = "cortex-m"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -73,12 +79,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
 
 [[package]]
+name = "embedded-io"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
+
+[[package]]
 name = "mcx-hal"
 version = "0.0.1"
 dependencies = [
+ "cfg-if",
  "cortex-m",
  "cortex-m-rt",
+ "critical-section",
  "embedded-hal 1.0.0",
+ "embedded-io",
  "mcxn947-pac",
  "panic-halt",
  "paste",
@@ -86,7 +101,9 @@ dependencies = [
 
 [[package]]
 name = "mcxn947-pac"
-version = "0.0.1"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d1433533f6fd71d60b13227bdb6e01c9cf0a63c3ff028bb41bb92a769de441c"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",

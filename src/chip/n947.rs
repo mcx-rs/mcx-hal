@@ -143,6 +143,19 @@ pub(crate) mod gpio {
     ]);
 }
 
+#[allow(hidden_glob_reexports)]
+#[allow(non_snake_case)]
+#[allow(ambiguous_glob_reexports)]
+pub(crate) mod all_gpio {
+    pub use super::gpio::gpio0::*;
+    pub use super::gpio::gpio1::*;
+    pub use super::gpio::gpio2::*;
+    pub use super::gpio::gpio3::*;
+    pub use super::gpio::gpio4::*;
+    pub use super::gpio::gpio5::*;
+    mod split {}
+    mod Parts {}
+}
 pub(crate) mod clock {
     use crate::clock::impl_clockext;
     use crate::clock::ClockExt;

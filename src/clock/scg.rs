@@ -60,7 +60,15 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        todo!()
+        Self {
+            sosc_mode: None,
+            firc_range: None,
+            main_clock_source: MainClockSource::SIRC,
+            sirc_clk_periph_en: true,
+            firc_fclk_periph_en: false,
+            firc_sclk_periph_en: false,
+            ahbclkdiv: 0,
+        }
     }
 }
 
@@ -207,7 +215,7 @@ impl Config {
 
     pub fn get_system_clk(&self) -> Option<u32> {
         match self.get_main_clk() {
-            Some(clk) => Some(clk / self.ahbclkdiv as u32),
+            Some(clk) => Some(clk / (self.ahbclkdiv + 1) as u32),
             None => None,
         }
     }
