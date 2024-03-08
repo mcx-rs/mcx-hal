@@ -13,7 +13,7 @@ pub use chip::pac;
 
 pub mod clock;
 pub mod gpio;
-// pub mod lpuart;
+pub mod lpuart;
 pub mod mailbox;
 pub mod power;
 
