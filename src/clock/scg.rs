@@ -48,12 +48,14 @@ pub struct Config {
     /// Main Clock source selection
     pub main_clock_source: MainClockSource,
 
-    /// enable SIRC clock to peripherals
+    /// enable SIRC clock to peripherals, output FRO12M
     pub sirc_clk_periph_en: bool,
-    /// enable FIRC FCLK to peripherals
+    /// enable FIRC FCLK to peripherals, output CLK144M
     pub firc_fclk_periph_en: bool,
-    /// enable FIRC SCLK to peripherals
+    /// enable FIRC SCLK to peripherals, output CLK48M
     pub firc_sclk_periph_en: bool,
+
+    pub sirc_div12_en: bool,
 
     pub ahbclkdiv: u8,
 }
@@ -67,6 +69,7 @@ impl Default for Config {
             sirc_clk_periph_en: true,
             firc_fclk_periph_en: false,
             firc_sclk_periph_en: false,
+            sirc_div12_en: false,
             ahbclkdiv: 0,
         }
     }
@@ -87,6 +90,7 @@ impl Config {
             sirc_clk_periph_en: true,
             firc_fclk_periph_en: false,
             firc_sclk_periph_en: false,
+            sirc_div12_en: false,
 
             ahbclkdiv: 0,
         }
@@ -102,6 +106,7 @@ impl Config {
             sirc_clk_periph_en: true,
             firc_fclk_periph_en: false,
             firc_sclk_periph_en: false,
+            sirc_div12_en: false,
 
             ahbclkdiv: 0,
         }
@@ -426,6 +431,14 @@ impl Clocks {
         {}
         assert!(self.rb.firccsr().read().fircerr().is_error_not_detected());
         self.rb.firccsr().modify(|_r, w| w.lk().write_disabled());
+
+        if self.config.sirc_div12_en {
+            unsafe {
+                pac::SYSCON0::steal()
+                    .clock_ctrl()
+                    .modify(|_r, w| w.fro1mhz_ena().enable());
+            }
+        }
     }
 
     fn setup_flash_access_cycles(run_mode: power::RunMode, clk: u32) {
