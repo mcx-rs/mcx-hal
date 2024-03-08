@@ -4,17 +4,19 @@
 use embedded_hal::digital::StatefulOutputPin;
 use panic_halt as _;
 
-use core::cell::Cell;
+use core::cell::{Cell, RefCell};
 use cortex_m::asm::wfi;
 use cortex_m::interrupt::Mutex;
 use cortex_m_rt::entry;
 use mcx_hal::{self as hal, pac, pac::interrupt};
 
+type BtnType = hal::gpio::gpio0::PIO0_6<hal::gpio::Input<hal::gpio::Floating>>;
+
 static FLAG_BTN_PRESSED: Mutex<Cell<bool>> = Mutex::new(Cell::new(false));
+static BTN: Mutex<RefCell<Option<BtnType>>> = Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
-    let cp = pac::CorePeripherals::take().unwrap();
     let dp = pac::Peripherals::take().unwrap();
 
     let gpio0 = hal::gpio::gpio0::split(dp.GPIO0, dp.PORT0);
@@ -25,6 +27,9 @@ fn main() -> ! {
         hal::gpio::GPIOInterruptSource::FallingEdge,
         hal::gpio::GPIOInterruptSelect::IRQ0,
     );
+    cortex_m::interrupt::free(|cs| {
+        BTN.borrow(cs).replace(Some(btn));
+    });
 
     // enable GPIO0 irq
     unsafe {
@@ -36,8 +41,8 @@ fn main() -> ! {
 
         cortex_m::interrupt::free(|cs| {
             if FLAG_BTN_PRESSED.borrow(cs).get() {
-                led_r.toggle();
                 FLAG_BTN_PRESSED.borrow(cs).set(false);
+                led_r.toggle().unwrap();
             }
         });
     }
@@ -45,5 +50,9 @@ fn main() -> ! {
 
 #[interrupt]
 fn GPIO00() {
-    cortex_m::interrupt::free(|cs| FLAG_BTN_PRESSED.borrow(cs).set(true));
+    cortex_m::interrupt::free(|cs| {
+        let mut btn = BTN.borrow(cs).borrow_mut();
+        btn.as_mut().unwrap().clear_irq_flag();
+        FLAG_BTN_PRESSED.borrow(cs).set(true);
+    });
 }

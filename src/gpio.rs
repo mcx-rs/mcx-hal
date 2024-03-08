@@ -313,6 +313,7 @@ macro_rules! gpio {
                 use embedded_hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin};
 
                 pub fn split(gpio: GPIO, port: PORT) -> Parts { Parts::new(gpio, port) }
+
                 pub struct Parts {
                     $( pub [< pio $index _ $pin >]: [< PIO $index _ $pin >]<$default_mode>, )+
                 }
@@ -496,48 +497,69 @@ macro_rules! gpio {
     (@irq_impl $index:expr, $pin:expr) => {
         paste::paste! {
             impl<MODE> [< PIO $index _ $pin >]<Input<MODE>> {
+                #[inline]
                 pub fn enable_irq(&mut self, source: GPIOInterruptSource, select: GPIOInterruptSelect) {
                     Self::gpio().icr(Self::pin()).write(|w| unsafe { w.isf().clear_bit_by_one().irqs().bit(select.into()).irqc().bits(source as u8) });
                 }
+                #[inline]
                 pub fn disable_irq(&mut self) {
                     Self::gpio().icr(Self::pin()).write(|w| w.isf().clear_bit_by_one());
                 }
+                #[inline]
                 pub fn check_irq(&self) -> bool {
                     Self::gpio().icr(Self::pin()).read().isf().bit_is_set()
                 }
                 #[inline]
                 pub fn check_irq_with_select(&self, select: GPIOInterruptSelect) -> bool {
                     Self::gpio().isfr(select as usize).read().bits() & (1 << Self::pin()) != 0
+                }
+                #[inline]
+                pub fn clear_irq_flag(&mut self) {
+                    Self::gpio().icr(Self::pin()).modify(|_r, w| w.isf().clear_bit_by_one());
                 }
             }
             impl<MODE> [< PIO $index _ $pin >]<Output<MODE>> {
+                #[inline]
                 pub fn enable_irq(&mut self, source: GPIOInterruptSource, select: GPIOInterruptSelect) {
                     Self::gpio().icr(Self::pin()).write(|w| unsafe { w.isf().clear_bit_by_one().irqs().bit(select.into()).irqc().bits(source as u8) });
                 }
+                #[inline]
                 pub fn disable_irq(&mut self) {
                     Self::gpio().icr(Self::pin()).write(|w| w.isf().clear_bit_by_one());
                 }
+                #[inline]
                 pub fn check_irq(&self) -> bool {
                     Self::gpio().icr(Self::pin()).read().isf().bit_is_set()
                 }
                 #[inline]
                 pub fn check_irq_with_select(&self, select: GPIOInterruptSelect) -> bool {
                     Self::gpio().isfr(select as usize).read().bits() & (1 << Self::pin()) != 0
+                }
+                #[inline]
+                pub fn clear_irq_flag(&mut self) {
+                    Self::gpio().icr(Self::pin()).modify(|_r, w| w.isf().clear_bit_by_one());
                 }
             }
             impl<MODE, const MUX: u8> [< PIO $index _ $pin >]<Muxed<MODE, MUX>> {
+                #[inline]
                 pub fn enable_irq(&mut self, source: GPIOInterruptSource, select: GPIOInterruptSelect) {
                     Self::gpio().icr(Self::pin()).write(|w| unsafe { w.isf().clear_bit_by_one().irqs().bit(select.into()).irqc().bits(source as u8) });
                 }
+                #[inline]
                 pub fn disable_irq(&mut self) {
                     Self::gpio().icr(Self::pin()).write(|w| w.isf().clear_bit_by_one());
                 }
+                #[inline]
                 pub fn check_irq(&self) -> bool {
                     Self::gpio().icr(Self::pin()).read().isf().bit_is_set()
                 }
                 #[inline]
                 pub fn check_irq_with_select(&self, select: GPIOInterruptSelect) -> bool {
                     Self::gpio().isfr(select as usize).read().bits() & (1 << Self::pin()) != 0
+                }
+                #[inline]
+                pub fn clear_irq_flag(&mut self) {
+                    Self::gpio().icr(Self::pin()).modify(|_r, w| w.isf().clear_bit_by_one());
                 }
             }
         }
