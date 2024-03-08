@@ -69,28 +69,3 @@ macro_rules! impl_clockext {
 
 pub use crate::chip::clock::PeripheralClocks;
 pub(crate) use impl_clockext;
-
-pub enum SystickClockSource {
-    Disable,
-    MainClock(u8),
-    Clk1M,
-    LPOSC,
-}
-
-pub fn enable_systick(num: usize, source: SystickClockSource) {
-    let syscon = unsafe { crate::pac::SYSCON0::steal() };
-    match source {
-        SystickClockSource::Disable => syscon.systickclksel(num).write(|w| w.sel().bits(0b111)),
-        SystickClockSource::MainClock(div) => {
-            syscon
-                .systickclkdiv(num)
-                .write(|w| unsafe { w.div().bits(div).halt().run() });
-            while syscon.systickclkdiv(num).read().unstab().is_ongoing() {}
-            syscon.systickclksel(num).write(|w| w.sel().bits(0b000));
-        }
-        SystickClockSource::Clk1M => {
-            syscon.systickclksel(num).write(|w| w.sel().bits(0b001));
-        }
-        SystickClockSource::LPOSC => unimplemented!(),
-    }
-}

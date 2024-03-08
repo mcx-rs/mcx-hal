@@ -25,16 +25,10 @@ fn main() -> ! {
 
     clocks.use_config(CLOCK_CONFIG);
     clocks.freeze();
-    // let clkout = gpio2.pio2_2.into_mux::<1>();
     let _clkout = gpio2.pio2_2.into_push_pull_output().into_mux::<1>();
 
-    let syscon = dp.SYSCON0;
-    // CLKOUT SEL = MainClock
-    syscon.clkoutsel().write(|w| w.sel().bits(0b0000));
-    syscon
-        .clkoutdiv()
-        .modify(|_r, w| unsafe { w.div().bits(11).halt().run() });
-    while syscon.clkoutdiv().read().unstab().is_ongoing() {}
+    hal::clock::clkout::setup(hal::clock::clkout::ClockSource::MainClock, 11 - 1);
+    hal::clock::clkout::run();
 
     loop {}
 }

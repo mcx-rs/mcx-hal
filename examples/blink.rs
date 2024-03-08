@@ -21,9 +21,9 @@ fn main() -> ! {
     clocks.freeze();
 
     const SYSTICK_DIV: u8 = 2;
-    hal::clock::enable_systick(
+    hal::clock::systick::setup_systick(
         0,
-        hal::clock::SystickClockSource::MainClock(SYSTICK_DIV - 1),
+        hal::clock::systick::ClockSource::MainClock(SYSTICK_DIV - 1),
     );
 
     let mut delay = cortex_m::delay::Delay::new(
