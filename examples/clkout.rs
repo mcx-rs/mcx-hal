@@ -19,6 +19,7 @@ fn main() -> ! {
         firc_fclk_periph_en: true,
         firc_sclk_periph_en: true,
         sirc_clk_periph_en: true,
+        sirc_div12_en: true,
         ahbclkdiv: 0,
     };
 
