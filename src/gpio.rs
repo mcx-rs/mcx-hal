@@ -16,7 +16,7 @@
 //! ```
 //!
 
-use core::marker::PhantomData;
+use core::{marker::PhantomData, panic};
 
 /// Type state Muxed
 pub struct Muxed<MODE, const MUX: u8>(PhantomData<MODE>);
@@ -31,6 +31,16 @@ pub struct PullUp;
 pub struct PullDown;
 pub struct PushPull;
 pub struct OpenDrain;
+
+mod sealed {
+    pub(crate) trait Interruptable {}
+
+    impl<T: Interruptable + ?Sized> Interruptable for &mut T {}
+
+    impl<MODE> Interruptable for super::Input<MODE> {}
+    impl<MODE> Interruptable for super::Output<MODE> {}
+    impl<MODE, const M: u8> Interruptable for super::Muxed<MODE, M> {}
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum GPIOInterruptSource {
@@ -69,6 +79,201 @@ impl<MODE, const PORT: u8, const PIN: u8> Pin<MODE, PORT, PIN> {
     }
 }
 
+pub struct ErasedPin<MODE> {
+    pub(crate) port_pin: u8,
+    pub(crate) _mode: PhantomData<MODE>,
+}
+
+impl<MODE> ErasedPin<MODE> {
+    #[inline]
+    pub fn port(&self) -> u8 {
+        self.port_pin >> 5
+    }
+    #[inline]
+    pub fn pin(&self) -> u8 {
+        self.port_pin & 0b11111
+    }
+
+    #[inline]
+    fn gpio(&self) -> &'static crate::pac::gpio0::RegisterBlock {
+        // unsafe { &*crate::pac::GPIO0::ptr() }
+        match self.port() {
+            0 => unsafe { &*crate::pac::GPIO0::ptr() },
+            1 => unsafe { &*crate::pac::GPIO1::ptr() },
+            2 => unsafe { &*crate::pac::GPIO2::ptr() },
+            3 => unsafe { &*crate::pac::GPIO3::ptr() },
+            4 => unsafe { &*crate::pac::GPIO4::ptr() },
+            5 => unsafe { &*crate::pac::GPIO5::ptr() },
+            _ => panic!(),
+        }
+    }
+}
+
+impl<MODE> embedded_hal::digital::ErrorType for ErasedPin<MODE> {
+    type Error = core::convert::Infallible;
+}
+
+impl<MODE> embedded_hal::digital::InputPin for ErasedPin<Input<MODE>> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
+        Ok((*self.gpio()).pdir().read().bits() >> self.pin() & 1 == 1)
+    }
+
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(!self.is_high().unwrap())
+    }
+}
+
+impl<MODE> embedded_hal::digital::OutputPin for ErasedPin<Output<MODE>> {
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        (*self.gpio())
+            .pcor()
+            .write(|w| unsafe { w.bits(self.pin() as u32) });
+        Ok(())
+    }
+
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        (*self.gpio())
+            .psor()
+            .write(|w| unsafe { w.bits(self.pin() as u32) });
+        Ok(())
+    }
+}
+
+impl<MODE> embedded_hal::digital::StatefulOutputPin for ErasedPin<Output<MODE>> {
+    fn is_set_high(&mut self) -> Result<bool, Self::Error> {
+        Ok((*self.gpio()).pdor().read().bits() >> self.pin() & 1 == 1)
+    }
+
+    fn is_set_low(&mut self) -> Result<bool, Self::Error> {
+        Ok((*self.gpio()).pdor().read().bits() >> self.pin() & 1 == 0)
+    }
+
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        (*self.gpio())
+            .ptor()
+            .write(|w| unsafe { w.bits(1 << self.pin()) });
+        Ok(())
+    }
+}
+
+impl<MODE> ErasedPin<Input<MODE>> {
+    #[inline]
+    pub fn enable_irq(&mut self, source: GPIOInterruptSource, select: GPIOInterruptSelect) {
+        unsafe {
+            (*self.gpio()).icr(self.pin() as usize).write(|w| {
+                w.isf()
+                    .clear_bit_by_one()
+                    .irqs()
+                    .bit(select.into())
+                    .irqc()
+                    .bits(source as u8)
+            });
+        }
+    }
+    #[inline]
+    pub fn disable_irq(&mut self) {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .write(|w| w.isf().clear_bit_by_one());
+    }
+    #[inline]
+    pub fn check_irq(&self) -> bool {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .read()
+            .isf()
+            .bit_is_set()
+    }
+    #[inline]
+    pub fn check_irq_with_select(&self, select: GPIOInterruptSelect) -> bool {
+        (*self.gpio()).isfr(select as usize).read().bits() & (1 << self.pin()) != 0
+    }
+    #[inline]
+    pub fn clear_irq_flag(&mut self) {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .modify(|_r, w| w.isf().clear_bit_by_one())
+    }
+}
+impl<MODE> ErasedPin<Output<MODE>> {
+    #[inline]
+    pub fn enable_irq(&mut self, source: GPIOInterruptSource, select: GPIOInterruptSelect) {
+        unsafe {
+            (*self.gpio()).icr(self.pin() as usize).write(|w| {
+                w.isf()
+                    .clear_bit_by_one()
+                    .irqs()
+                    .bit(select.into())
+                    .irqc()
+                    .bits(source as u8)
+            });
+        }
+    }
+    #[inline]
+    pub fn disable_irq(&mut self) {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .write(|w| w.isf().clear_bit_by_one());
+    }
+    #[inline]
+    pub fn check_irq(&self) -> bool {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .read()
+            .isf()
+            .bit_is_set()
+    }
+    #[inline]
+    pub fn check_irq_with_select(&self, select: GPIOInterruptSelect) -> bool {
+        (*self.gpio()).isfr(select as usize).read().bits() & (1 << self.pin()) != 0
+    }
+    #[inline]
+    pub fn clear_irq_flag(&mut self) {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .modify(|_r, w| w.isf().clear_bit_by_one())
+    }
+}
+impl<MODE, const M: u8> ErasedPin<Muxed<MODE, M>> {
+    #[inline]
+    pub fn enable_irq(&mut self, source: GPIOInterruptSource, select: GPIOInterruptSelect) {
+        unsafe {
+            (*self.gpio()).icr(self.pin() as usize).write(|w| {
+                w.isf()
+                    .clear_bit_by_one()
+                    .irqs()
+                    .bit(select.into())
+                    .irqc()
+                    .bits(source as u8)
+            });
+        }
+    }
+    #[inline]
+    pub fn disable_irq(&mut self) {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .write(|w| w.isf().clear_bit_by_one());
+    }
+    #[inline]
+    pub fn check_irq(&self) -> bool {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .read()
+            .isf()
+            .bit_is_set()
+    }
+    #[inline]
+    pub fn check_irq_with_select(&self, select: GPIOInterruptSelect) -> bool {
+        (*self.gpio()).isfr(select as usize).read().bits() & (1 << self.pin()) != 0
+    }
+    #[inline]
+    pub fn clear_irq_flag(&mut self) {
+        (*self.gpio())
+            .icr(self.pin() as usize)
+            .modify(|_r, w| w.isf().clear_bit_by_one())
+    }
+}
+
 macro_rules! gpio {
     (
         index: $index:expr,
@@ -80,7 +285,7 @@ macro_rules! gpio {
                 use core::convert::Infallible;
                 use $crate::pac::{[< GPIO $index >] as GPIO, [< PORT $index >] as PORT};
                 use $crate::clock::PeripheralClocks;
-                use $crate::gpio::{gpio, Pin, Muxed, Input, Output, Analog, Floating, PullUp, PullDown, PushPull, OpenDrain};
+                use $crate::gpio::{gpio, Pin, ErasedPin, Muxed, Input, Output, Analog, Floating, PullUp, PullDown, PushPull, OpenDrain};
                 use $crate::gpio::{GPIOInterruptSource, GPIOInterruptSelect};
                 use embedded_hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin};
 
@@ -162,6 +367,9 @@ macro_rules! gpio {
                 pub fn into_analog(self) -> [< PIO $index _ $pin >]<Analog> {
                     Self::port().pcr(Self::pin()).write(|w| unsafe { w.ibe().clear_bit().mux().bits(0) });
                     [< PIO $index _ $pin >] { _mode: PhantomData }
+                }
+                pub fn erase(self) -> ErasedPin<MODE> {
+                    ErasedPin { port_pin: ($index << 5 | $pin), _mode: PhantomData}
                 }
             }
             impl<MODE> [< PIO $index _ $pin >]<Input<MODE>> {
