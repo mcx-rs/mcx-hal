@@ -4,6 +4,8 @@
 
 pub use mcx_pac as pac;
 
+pub mod syscon;
+
 pub mod prelude {}
 
 #[derive(Clone, Copy, Debug)]
