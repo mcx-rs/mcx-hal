@@ -1,0 +1,8 @@
+[target.thumbv8m.main-none-eabi]
+rustflags = ["-Clink-arg=-Tlink.x"]
+
+[target.thumbv8m.main-none-eabihf]
+rustflags = ["-Clink-arg=-Tlink.x"]
+
+[build]
+target = "thumbv8m.main-none-eabi"
