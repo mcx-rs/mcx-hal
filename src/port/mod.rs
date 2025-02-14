@@ -8,6 +8,8 @@ use crate::{
     private::Sealed,
 };
 
+pub mod scg;
+
 mod device {
     use cfg_if::cfg_if;
     cfg_if! {
