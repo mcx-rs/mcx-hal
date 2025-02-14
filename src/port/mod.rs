@@ -38,12 +38,16 @@ pub unsafe trait Port: Sealed {
     fn port(&self) -> u8;
     /// Get pin index.
     fn pin(&self) -> u8;
+    /// Get current mux.
+    fn mux(&self) -> u8;
+    /// Set current mux.
+    fn set_mux(&mut self, mux: u8);
 
     /// Get PCR register to modify.
     ///
     /// # Safety
     /// Any modification is dangerous, will break current pin function.
-    unsafe fn pcr(&mut self) -> Reg<Self::PCR, RW>;
+    unsafe fn pcr(&self) -> Reg<Self::PCR, RW>;
 
     /// Disconnect internal pull-up or pull-down registers.
     fn floating(&mut self);
@@ -81,7 +85,18 @@ unsafe impl<const PORT: u8, const PIN: u8> Port for PortPin<PORT, PIN> {
         PIN
     }
     #[inline(always)]
-    unsafe fn pcr(&mut self) -> Reg<Self::PCR, RW> {
+    fn mux(&self) -> u8 {
+        unsafe { self.pcr().read().MUX() }
+    }
+    #[inline(always)]
+    fn set_mux(&mut self, mux: u8) {
+        unsafe {
+            self.pcr().modify(|r| r.set_MUX(mux));
+        }
+    }
+
+    #[inline(always)]
+    unsafe fn pcr(&self) -> Reg<Self::PCR, RW> {
         Instance::<PORT>::instance().regs().PCR(PIN as usize)
     }
     #[inline(always)]
