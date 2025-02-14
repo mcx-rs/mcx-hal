@@ -4,6 +4,7 @@
 
 pub use mcx_pac as pac;
 
+pub mod gpio;
 pub mod port;
 pub mod syscon;
 
