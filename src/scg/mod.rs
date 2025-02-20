@@ -5,8 +5,17 @@ use crate::{
     port::scg::{Pin, EXTAL as SigEXTAL, XTAL as SigXTAL},
 };
 
+use cfg_if::cfg_if;
+
 mod firc;
-use firc::FIRC;
+pub use firc::FIRC;
+
+cfg_if! {
+    if #[cfg(feature = "mcxa2")] {
+        mod pll;
+        pub use pll::{PllSource, PllConfig};
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum SCGError {
@@ -16,16 +25,19 @@ pub enum SCGError {
     InvalidValue,
     InvalidConfig,
 
+    ClockSourceDisabled,
+
     SOSCErr,
     SIRCErr,
     FIRCErr,
+    SPLLErr,
 }
 
 pub struct SCG<const N: u8, PINS> {
     scg: Instance<N>,
     pins: PINS,
     has_pins: bool,
-    config: Config,
+    config: SCGConfig,
 }
 unsafe impl<const N: u8, PINS> Send for SCG<N, PINS> {}
 unsafe impl<const N: u8, PINS> Sync for SCG<N, PINS> {}
@@ -46,7 +58,7 @@ where
             scg,
             pins,
             has_pins: true,
-            config: Config::default(),
+            config: SCGConfig::default(),
         }
     }
 
@@ -65,7 +77,7 @@ impl<const N: u8> SCG<N, ()> {
             scg,
             pins: (),
             has_pins: false,
-            config: Config::default(),
+            config: SCGConfig::default(),
         }
     }
 }
@@ -110,6 +122,32 @@ impl<const N: u8, PINS> SCG<N, PINS> {
             FIRC::disable_firc(scg)?;
         }
 
+        #[cfg(feature = "mcxa2")]
+        if let Some(spll) = self.config.spll {
+            use pll::enable_spll;
+
+            if matches!(spll.source, PllSource::SOSC) && self.config.sosc.is_none() {
+                return Err(SCGError::ClockSourceDisabled);
+            }
+            if matches!(spll.source, PllSource::FIRC)
+                && self.config.firc.is_none()
+                && !self.config.firc_sclk_en
+            {
+                return Err(SCGError::ClockSourceDisabled);
+            }
+
+            let spll_source_clk_freq = match spll.source {
+                PllSource::SOSC => self.config.sosc.unwrap().freq(),
+                PllSource::FIRC => FIRC::default().freq(),
+                PllSource::ROSC => 32_768,
+                PllSource::SIRC => 12_000_000,
+            };
+
+            enable_spll(scg, spll, spll_source_clk_freq)?;
+        } else {
+            // TODO: disable SPLL
+        }
+
         if scg.CSR().read().SCS() == self.config.main_clock_source as u8 {
             return Ok(());
         }
@@ -121,8 +159,16 @@ impl<const N: u8, PINS> SCG<N, PINS> {
     }
 
     pub fn back_to_default(&mut self) -> Result<(), SCGError> {
-        self.config = Config::default();
+        self.config = SCGConfig::default();
         self.freeze()
+    }
+
+    pub fn config(&mut self) -> &mut SCGConfig {
+        &mut self.config
+    }
+
+    pub fn set_config(&mut self, config: SCGConfig) {
+        self.config = config;
     }
 }
 
@@ -234,7 +280,7 @@ impl MainClockSource {
 }
 
 #[derive(Clone, Copy)]
-pub struct Config {
+pub struct SCGConfig {
     pub sosc: Option<SOSC>,
     pub sosc_stop_en: bool,
 
@@ -246,9 +292,12 @@ pub struct Config {
     pub firc_sclk_en: bool,
     pub firc_fclk_en: bool,
 
+    #[cfg(feature = "mcxa2")]
+    pub spll: Option<PllConfig>,
+
     pub main_clock_source: MainClockSource,
 }
-impl Default for Config {
+impl Default for SCGConfig {
     fn default() -> Self {
         Self {
             sosc: None,
@@ -259,11 +308,12 @@ impl Default for Config {
             firc_stop_en: false,
             firc_sclk_en: true,
             firc_fclk_en: true,
+            spll: None,
             main_clock_source: MainClockSource::default(),
         }
     }
 }
-impl Config {
+impl SCGConfig {
     pub fn valid(&self) -> bool {
         if !self.main_clock_source.valid() {
             return false;
