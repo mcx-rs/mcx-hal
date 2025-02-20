@@ -8,6 +8,7 @@ use crate::{
     private::Sealed,
 };
 
+pub mod lpuart;
 pub mod scg;
 
 mod device {

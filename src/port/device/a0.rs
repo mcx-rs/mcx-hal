@@ -184,3 +184,23 @@ impl Port3 {
         }
     }
 }
+
+use crate::port::lpuart::lpuart;
+lpuart!(pin: PortPin<0, 2>, module: U0, signal: RXD);
+lpuart!(pin: PortPin<0, 3>, module: U0, signal: TXD);
+lpuart!(pin: PortPin<1, 4>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<1, 5>, module: U2, signal: TXD);
+lpuart!(pin: PortPin<1, 8>, module: U1, signal: RXD);
+lpuart!(pin: PortPin<1, 9>, module: U1, signal: TXD);
+lpuart!(pin: PortPin<2, 0>, module: U0, signal: RXD);
+lpuart!(pin: PortPin<2, 1>, module: U0, signal: TXD);
+lpuart!(pin: PortPin<2, 2>, module: U2, signal: TXD);
+lpuart!(pin: PortPin<2, 3>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<3, 8>, module: U1, signal: RXD);
+lpuart!(pin: PortPin<3, 9>, module: U1, signal: TXD);
+lpuart!(pin: PortPin<1, 12>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<1, 13>, module: U2, signal: TXD);
+lpuart!(pin: PortPin<2, 12>, module: U1, signal: RXD);
+lpuart!(pin: PortPin<2, 13>, module: U1, signal: TXD);
+lpuart!(pin: PortPin<3, 14>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<3, 15>, module: U2, signal: TXD);

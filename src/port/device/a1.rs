@@ -256,3 +256,43 @@ impl Port4 {
         }
     }
 }
+
+use crate::port::lpuart::lpuart;
+lpuart!(pin: PortPin<0, 2>, module: U0, signal: RXD);
+lpuart!(pin: PortPin<0, 3>, module: U0, signal: TXD);
+lpuart!(pin: PortPin<0, 20>, module: U0, signal: RXD);
+lpuart!(pin: PortPin<0, 21>, module: U0, signal: TXD);
+lpuart!(pin: PortPin<1, 4>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<1, 5>, module: U2, signal: TXD);
+lpuart!(pin: PortPin<1, 8>, module: U1, signal: RXD);
+lpuart!(pin: PortPin<1, 9>, module: U1, signal: TXD);
+lpuart!(pin: PortPin<2, 0>, module: U0, signal: RXD);
+lpuart!(pin: PortPin<2, 1>, module: U0, signal: TXD);
+lpuart!(pin: PortPin<2, 2>, module: U2, signal: TXD);
+lpuart!(pin: PortPin<2, 3>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<2, 6>, module: U4, signal: RXD);
+lpuart!(pin: PortPin<2, 7>, module: U4, signal: TXD);
+lpuart!(pin: PortPin<3, 0>, module: U3, signal: RXD);
+lpuart!(pin: PortPin<3, 1>, module: U3, signal: TXD);
+lpuart!(pin: PortPin<3, 8>, module: U1, signal: RXD);
+lpuart!(pin: PortPin<3, 9>, module: U1, signal: TXD);
+lpuart!(pin: PortPin<4, 2>, module: U3, signal: RXD);
+lpuart!(pin: PortPin<4, 3>, module: U4, signal: TXD);
+lpuart!(pin: PortPin<4, 4>, module: U4, signal: RXD);
+lpuart!(pin: PortPin<4, 5>, module: U3, signal: TXD);
+lpuart!(pin: PortPin<1, 12>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<1, 13>, module: U2, signal: TXD);
+lpuart!(pin: PortPin<2, 10>, module: U2, signal: TXD);
+lpuart!(pin: PortPin<2, 11>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<2, 12>, module: U1, signal: RXD);
+lpuart!(pin: PortPin<2, 13>, module: U1, signal: TXD);
+lpuart!(pin: PortPin<3, 12>, module: U3, signal: TXD);
+lpuart!(pin: PortPin<3, 13>, module: U3, signal: RXD);
+lpuart!(pin: PortPin<3, 14>, module: U2, signal: RXD);
+lpuart!(pin: PortPin<3, 15>, module: U2, signal: TXD);
+lpuart!(pin: PortPin<3, 18>, module: U4, signal: RXD);
+lpuart!(pin: PortPin<3, 19>, module: U4, signal: TXD);
+lpuart!(pin: PortPin<3, 20>, module: U1, signal: RXD);
+lpuart!(pin: PortPin<3, 21>, module: U1, signal: TXD);
+lpuart!(pin: PortPin<3, 27>, module: U4, signal: TXD);
+lpuart!(pin: PortPin<3, 28>, module: U4, signal: RXD);
