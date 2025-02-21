@@ -2,8 +2,6 @@
 
 #![no_std]
 
-extern crate static_assertions;
-
 pub mod port;
 
 use cfg_if::cfg_if;
