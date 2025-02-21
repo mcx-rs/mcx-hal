@@ -1,7 +1,7 @@
-use super::{mrcc_periph_en_define, PeripheralACC, PeripheralCC, PeripheralMRCC, PeripheralRST};
 use crate::pac::*;
+use crate::syscon::device::periph_en_define;
 
-mrcc_periph_en_define! {
+periph_en_define! {
     (periph: inputmux::INPUTMUX0, 0,  0, hRST: true, hCC: true, hACC: true)
     (periph: i3c::I3C0,           0,  1, hRST: true, hCC: true, hACC: true)
     (periph: ctimer::CTIMER0,     0,  2, hRST: true, hCC: true, hACC: true)

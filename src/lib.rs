@@ -2,19 +2,21 @@
 
 #![no_std]
 
-pub use mcx_pac as pac;
+extern crate static_assertions;
 
-pub mod device;
-pub mod gpio;
 pub mod port;
-pub mod scg;
-pub mod spc;
-pub mod syscon;
 
-mod private {
-    /// Sealed trait to protect crate traits not implemented by outside crate code.
-    pub trait Sealed {}
+use cfg_if::cfg_if;
+cfg_if! {
+    if #[cfg(feature = "device")] {
+        pub use mcx_pac as pac;
+
+        pub mod syscon;
+    }
 }
 
-#[cfg(not(any(feature = "mcxa", feature = "mcxn")))]
-compile_error!("Please select one device");
+mod private {
+    /// Sealed trait is used to make sure the crate public trait not
+    /// implemented by outside crate types.
+    pub trait Sealed {}
+}
