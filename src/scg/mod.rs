@@ -2,7 +2,7 @@
 
 use crate::{
     pac::scg::Instance,
-    port::scg::{Pin, EXTAL as SigEXTAL, XTAL as SigXTAL},
+    port::scg::{Pin, EXTAL48M, XTAL48M},
 };
 
 use cfg_if::cfg_if;
@@ -43,8 +43,8 @@ unsafe impl<const N: u8, PINS> Send for SCG<N, PINS> {}
 unsafe impl<const N: u8, PINS> Sync for SCG<N, PINS> {}
 impl<const N: u8, EXTAL, XTAL> SCG<N, Pins<EXTAL, XTAL>>
 where
-    EXTAL: Pin<Signal = SigEXTAL>,
-    XTAL: Pin<Signal = SigXTAL, Module = EXTAL::Module>,
+    EXTAL: Pin<Signal = EXTAL48M>,
+    XTAL: Pin<Signal = XTAL48M, Module = EXTAL::Module>,
 {
     pub fn new(scg: Instance<N>, mut pins: Pins<EXTAL, XTAL>) -> Self {
         use crate::port::scg::prepare;
@@ -174,17 +174,17 @@ impl<const N: u8, PINS> SCG<N, PINS> {
 
 pub struct Pins<EXTAL, XTAL>
 where
-    EXTAL: Pin<Signal = SigEXTAL>,
-    XTAL: Pin<Signal = SigXTAL, Module = EXTAL::Module>,
+    EXTAL: Pin<Signal = EXTAL48M>,
+    XTAL: Pin<Signal = XTAL48M, Module = EXTAL::Module>,
 {
     extal: EXTAL,
     xtal: Option<XTAL>,
 }
-unsafe impl<EXTAL: Pin<Signal = SigEXTAL>, XTAL: Pin<Signal = SigXTAL, Module = EXTAL::Module>> Send
+unsafe impl<EXTAL: Pin<Signal = EXTAL48M>, XTAL: Pin<Signal = XTAL48M, Module = EXTAL::Module>> Send
     for Pins<EXTAL, XTAL>
 {
 }
-unsafe impl<EXTAL: Pin<Signal = SigEXTAL>, XTAL: Pin<Signal = SigXTAL, Module = EXTAL::Module>> Sync
+unsafe impl<EXTAL: Pin<Signal = EXTAL48M>, XTAL: Pin<Signal = XTAL48M, Module = EXTAL::Module>> Sync
     for Pins<EXTAL, XTAL>
 {
 }
