@@ -4,11 +4,11 @@
 
 pub use mcx_pac as pac;
 
-pub mod device;
+// pub mod device;
 pub mod gpio;
 pub mod port;
-pub mod scg;
-pub mod spc;
+// pub mod scg;
+// pub mod spc;
 pub mod syscon;
 
 mod private {

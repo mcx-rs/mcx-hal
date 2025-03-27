@@ -18,16 +18,17 @@ cortex-m-rt = "0.7"
 
 [features]
 rt = ["mcx-pac/rt"]
+device = []
 
 mcxa153 = ["mcx-pac/mcxa153", "mcxa0"]
 mcxa156 = ["mcx-pac/mcxa156", "mcxa1"]
 mcxa276 = ["mcx-pac/mcxa276", "mcxa2"]
 
-mcxa = []
+mcxa = ["device"]
 mcxa0 = ["mcxa"]
 mcxa1 = ["mcxa"]
 mcxa2 = ["mcxa"]
 
-mcxn = []
+mcxn = ["device"]
 mcxn0 = ["mcxn"]
 mcxn1 = ["mcxn"]
