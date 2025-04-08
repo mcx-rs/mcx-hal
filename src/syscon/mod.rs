@@ -1,12 +1,27 @@
 //! System Controller
 
+mod syscon_divider;
+pub use syscon_divider::*;
+
+#[cfg(feature = "mcxa")]
+mod mrcc_divider;
+#[cfg(feature = "mcxa")]
+pub(crate) use mrcc_divider::*;
+
 use crate::private;
 
 pub trait PeripheralRST: private::Sealed {
-    fn reset(&mut self, release: bool);
+    fn assert_reset(&mut self, release: bool);
+    fn reset(&mut self) {
+        self.assert_reset(true);
+        self.assert_reset(true);
+    }
 }
 pub trait PeripheralCC: private::Sealed {
-    fn clock(&mut self, enable: bool);
+    fn enable_clock(&mut self, enable: bool);
+}
+pub trait PeripheralEn: private::Sealed {
+    fn enable(enable: bool);
 }
 
 #[cfg(feature = "mcxa")]
@@ -39,7 +54,7 @@ macro_rules! periph_en_define {
     (@impl_rst $name:ty, $n:expr, $bit:expr, hRST: $hRST:expr) => {
         impl crate::syscon::PeripheralRST for $name {
             #[inline(always)]
-            fn reset(&mut self, release: bool) {
+            fn assert_reset(&mut self, release: bool) {
                 let reg = unsafe {
                     let ptr = crate::pac::mrcc::ADDRESSES[0] as *mut u8;
                     let offset = if release { 0x04usize } else { 0x08usize };
@@ -53,7 +68,7 @@ macro_rules! periph_en_define {
     (@impl_cc $name:ty, $n:expr, $bit:expr, hCC: $hCC:expr) => {
         impl crate::syscon::PeripheralCC for $name {
             #[inline(always)]
-            fn clock(&mut self, enable: bool) {
+            fn enable_clock(&mut self, enable: bool) {
                 let reg = unsafe {
                     let ptr = crate::pac::mrcc::ADDRESSES[0] as *mut u8;
                     let offset = if enable { 0x04usize } else { 0x08usize };
@@ -86,11 +101,25 @@ macro_rules! periph_en_define {
 pub(crate) use periph_en_define;
 
 cfg_if::cfg_if! {
-    if #[cfg(feature = "mcxa0")] {
-        mod a0;
-    } else if #[cfg(feature = "mcxa1")] {
-        mod a1;
-    } else if #[cfg(feature = "mcxa2")] {
-        mod a2;
+    if #[cfg(feature = "mcxa")] {
+        mod mrcc;
     }
 }
+
+// mod device {
+//     cfg_if::cfg_if! {
+//         if #[cfg(feature = "mcxa0")] {
+//             mod a0 as _d;
+//         } else if #[cfg(feature = "mcxa1")] {
+//             mod a1 as _d;
+//         } else if #[cfg(feature = "mcxa2")] {
+//             mod a2 as _d;
+//         }
+//     }
+// }
+
+#[cfg_attr(feature = "mcxa0", path = "device/a0.rs")]
+#[cfg_attr(feature = "mcxa1", path = "device/a1.rs")]
+#[cfg_attr(feature = "mcxa2", path = "device/a2.rs")]
+mod device;
+pub use device::*;

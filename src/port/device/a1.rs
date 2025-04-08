@@ -24,8 +24,8 @@ unsafe impl Send for Port0 {}
 unsafe impl Sync for Port0 {}
 impl Port0 {
     pub fn new(mut port: crate::pac::port::PORT0) -> Self {
-        port.reset(true);
-        port.clock(true);
+        port.reset();
+        port.enable_clock(true);
         Self {
             _port: port,
             p0: unsafe { PortPin::<0, 0>::new() },
@@ -71,8 +71,8 @@ unsafe impl Send for Port1 {}
 unsafe impl Sync for Port1 {}
 impl Port1 {
     pub fn new(mut port: crate::pac::port::PORT1) -> Self {
-        port.reset(true);
-        port.clock(true);
+        port.reset();
+        port.enable_clock(true);
         Self {
             _port: port,
             p0: unsafe { PortPin::<1, 0>::new() },
@@ -124,8 +124,8 @@ unsafe impl Send for Port2 {}
 unsafe impl Sync for Port2 {}
 impl Port2 {
     pub fn new(mut port: crate::pac::port::PORT2) -> Self {
-        port.reset(true);
-        port.clock(true);
+        port.reset();
+        port.enable_clock(true);
         Self {
             _port: port,
             p0: unsafe { PortPin::<2, 0>::new() },
@@ -183,8 +183,8 @@ unsafe impl Send for Port3 {}
 unsafe impl Sync for Port3 {}
 impl Port3 {
     pub fn new(mut port: crate::pac::port::PORT3) -> Self {
-        port.reset(true);
-        port.clock(true);
+        port.reset();
+        port.enable_clock(true);
         Self {
             _port: port,
             p0: unsafe { PortPin::<3, 0>::new() },
@@ -229,8 +229,8 @@ unsafe impl Send for Port4 {}
 unsafe impl Sync for Port4 {}
 impl Port4 {
     pub fn new(mut port: crate::pac::port::PORT4) -> Self {
-        port.reset(true);
-        port.clock(true);
+        port.reset();
+        port.enable_clock(true);
         Self {
             _port: port,
             p2: unsafe { PortPin::<4, 2>::new() },

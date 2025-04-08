@@ -1,5 +1,7 @@
 use crate::pac::*;
-use crate::syscon::periph_en_define;
+use crate::syscon::{generate_mrcc_divider, periph_en_define};
+
+use super::generate_mrcc_clock_source;
 
 periph_en_define! {
     (periph: inputmux::INPUTMUX0, 0,  0, hRST: true, hCC: true, hACC: true)
@@ -77,3 +79,40 @@ periph_en_define! {
     (periph: mau::MAU0,           2,  9,             hCC: true, hACC: true)
     (virt: ROMC,                  2, 10,             hCC: true, hACC: true)
 }
+
+/// Clock Source definition used in MRCC clock divider.
+#[repr(u8)]
+pub enum MRCCClockSource {
+    FroLfDiv = 0,
+    FroHf = 1,
+    FroHfDiv = 2,
+    ClkIn = 3,
+    Clk16K = 4,
+    Clk1M = 5,
+    SPllDiv = 6,
+    NoClock = 7,
+}
+
+macro_rules! generate_lpuart_clock_source_and_divider {
+    ($($instance:literal),+) => {
+        paste::paste! {
+            $(
+                generate_mrcc_divider!( [< setup_lpuart $instance _divider >], [< MRCC_LPUART $instance _CLKDIV >], concat!("Setup LPUART", $instance, " divider"));
+                generate_mrcc_clock_source!( [< setup_lpuart $instance _clock_source >], [< MRCC_LPUART $instance _CLKSEL >], MRCCClockSource, concat!("Setup LPUART", $instance, " clock source"));
+            )+
+        }
+    };
+}
+generate_lpuart_clock_source_and_divider!(0, 1, 2, 3, 4, 5);
+
+macro_rules! generate_ctimer_clock_source_and_divider {
+    ($($instance:literal),+) => {
+        paste::paste! {
+            $(
+                generate_mrcc_divider!( [< setup_ctimer $instance _divider >], [< MRCC_CTIMER $instance _CLKDIV >], concat!("Setup CTIMER", $instance, " divider"));
+                generate_mrcc_clock_source!( [< setup_ctimer $instance _clock_source >], [< MRCC_CTIMER $instance _CLKSEL >], MRCCClockSource, concat!("Setup CTIMER", $instance, " clock source"));
+            )+
+        }
+    };
+}
+generate_ctimer_clock_source_and_divider!(0, 1, 2, 3, 4);
