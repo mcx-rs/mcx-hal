@@ -102,7 +102,20 @@ pub struct Config {
 }
 impl Default for Config {
     fn default() -> Self {
-        todo!();
+        Self {
+            sosc: None,
+            sosc_stop_en: false,
+
+            sirc_12m_clk_en: true,
+            sirc_stop_en: false,
+
+            firc: Some(FIRC::default()),
+            firc_sclk_en: true,
+            firc_fclk_en: true,
+            firc_stop_en: false,
+
+            main_clock_source: MainClockSource::default(),
+        }
     }
 }
 impl Config {
