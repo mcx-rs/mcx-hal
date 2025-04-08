@@ -63,8 +63,8 @@ impl<const N: u8> GPIO<N> {
     where
         crate::pac::gpio::Instance<N>: crate::syscon::PeripheralRST + crate::syscon::PeripheralCC,
     {
-        gpio.reset(true);
-        gpio.clock(true);
+        gpio.reset();
+        gpio.enable_clock(true);
         Self { gpio }
     }
 
