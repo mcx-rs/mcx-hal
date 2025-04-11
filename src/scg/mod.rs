@@ -35,10 +35,11 @@ mod sosc;
 pub use firc::FIRC;
 pub use sosc::SOSC;
 
-use crate::port::{
+use crate::{
     consts::Const,
-    scg::{prepare, Pin, EXTAL48M, XTAL48M},
+    port::scg::{prepare, Pin, EXTAL48M, XTAL48M},
 };
+
 type Instance = crate::pac::scg::Instance<0>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
