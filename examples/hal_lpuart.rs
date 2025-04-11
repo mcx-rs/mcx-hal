@@ -4,20 +4,15 @@
 extern crate panic_halt;
 
 use eio06::Write;
-use mcx_hal::{
-    lpuart::{BaudRate, LpUart, Pins},
-    pac,
-    port::Port2,
-    scg::{Config as ClockConfig, FIRC, SCG},
-    syscon::{setup_fro_hf_divider, setup_lpuart2_clock_source, setup_lpuart2_divider},
-};
+use mcx_hal::prelude::*;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
     let mut scg = SCG::without_pins(unsafe { pac::scg::SCG0::instance() });
-
-    let mut cfg = ClockConfig::default();
-    cfg.firc_fclk_en = true;
+    let cfg = SCGConfig {
+        firc_fclk_en: true,
+        ..Default::default()
+    };
     scg.freeze(&cfg).unwrap();
 
     let port2 = Port2::new(unsafe { pac::port::PORT2::instance() });
@@ -28,15 +23,17 @@ fn main() -> ! {
 
     let mut lpuart2 = LpUart::new(
         unsafe { pac::lpuart::LPUART2::instance() },
-        Pins {
+        LpUartPins {
             tx: port2.p2,
             rx: port2.p3,
         },
     );
     lpuart2.configure(|i| {
         i.set_baud(&BaudRate::new(FIRC::default().freq(), 115200).unwrap());
+        i.set_rx_fifo(Some(0));
     });
-    lpuart2.set_enable(mcx_hal::lpuart::Direction::TX, true);
+    lpuart2.set_enable(LpUartDirection::TX, true);
+    lpuart2.set_enable(LpUartDirection::RX, true);
 
     writeln!(
         lpuart2,

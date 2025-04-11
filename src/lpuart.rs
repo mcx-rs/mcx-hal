@@ -1,11 +1,12 @@
 //! Low Power Universal Asynchronous Receiver / Transmitter
 
 use crate::{
-    pac::{self, lpuart::Instance},
-    port::{
-        consts::Const,
-        lpuart::{prepare, Pin, RXD, TXD},
+    consts::Const,
+    pac::{
+        self,
+        lpuart::{regs::STAT, Instance},
     },
+    port::lpuart::{prepare, Pin, RXD, TXD},
     syscon::{PeripheralCC, PeripheralRST},
 };
 
@@ -13,6 +14,44 @@ use crate::{
 #[derive(Clone, Copy, Debug)]
 pub enum LpUartError {
     BaudRateNotSupport,
+}
+
+bitflags::bitflags! {
+    #[derive(Clone, Copy)]
+    pub struct LpUartInterrupt: u32 {
+        /// Overrun Interrupt Enable.
+        const OVERRUN = 1 << 27;
+        /// Noise Error Interrupt Enable.
+        const NOISE_ERROR = 1 << 26;
+        /// Framing Error Interrupt Enable.
+        const FRAMING_ERROR = 1 << 25;
+        /// Parity Error Interrupt Enable.
+        const PARITY_ERROR = 1 << 24;
+        /// Transmit Interrupt Enable.
+        const TRANSMIT = 1 << 23;
+        /// Transmission Complete Interrupt Enable.
+        const TRANSMISSION_COMPLETE = 1 << 22;
+        /// Receiver Interrupt Enable.
+        const RECEIVER = 1 << 21;
+        /// Idle Line Interrupt Enable.
+        const IDLE_LINE = 1 << 20;
+
+        /// Transmit FIFO Overflow Interrupt Enable.
+        const TRANSMIT_FIFO_OVERFLOW = 1 << 9;
+        /// Receive FIFO Underflow Interrupt Enable.
+        const RECEIVE_FIFO_UNDERFLOW = 1 << 8;
+    }
+}
+impl LpUartInterrupt {
+    const fn fifo_mask() -> Self {
+        Self::from_bits_truncate(
+            Self::TRANSMIT_FIFO_OVERFLOW.bits() | Self::RECEIVE_FIFO_UNDERFLOW.bits(),
+        )
+    }
+
+    const fn ctrl_mask() -> Self {
+        Self::from_bits_truncate(Self::all().bits() & !Self::fifo_mask().bits())
+    }
 }
 
 /// Baud Rate resolver for LPUART.
@@ -185,13 +224,60 @@ impl<const N: u8, PINS> LpUart<N, PINS> {
         self.regs().DATA().read().0 as u8
     }
 
+    /// Get LPUART's current interrupt configuration.
+    pub fn irq_status(&self) -> LpUartInterrupt {
+        LpUartInterrupt::from_bits_truncate(
+            self.regs().CTRL().read().0 & self.regs().FIFO().read().0,
+        )
+    }
+
+    /// Set LPUART's Interrupt.
+    pub fn enable_interrupts(&mut self, irq: LpUartInterrupt) {
+        let ctrl_flags = irq & LpUartInterrupt::ctrl_mask();
+        let fifo_flags = irq & LpUartInterrupt::fifo_mask();
+
+        self.regs().CTRL().modify(|r| r.0 = r.0 | ctrl_flags.bits());
+        self.regs().FIFO().modify(|r| r.0 = r.0 | fifo_flags.bits());
+    }
+
+    pub fn disable_interrupts(&mut self, irq: LpUartInterrupt) {
+        let ctrl_flags = irq & LpUartInterrupt::ctrl_mask();
+        let fifo_flags = irq & LpUartInterrupt::fifo_mask();
+
+        self.regs()
+            .CTRL()
+            .modify(|r| r.0 = r.0 & (!ctrl_flags).bits());
+        self.regs()
+            .FIFO()
+            .modify(|r| r.0 = r.0 & (!fifo_flags).bits());
+    }
+
+    /// Return LPUART's DATA register address.
+    pub fn data(&self) -> *mut () {
+        self.regs().DATA().as_ptr() as _
+    }
+
+    pub fn status(&self) -> STAT {
+        self.regs().STAT().read()
+    }
+
     fn regs(&self) -> pac::lpuart::LPUART {
         self.lpuart.regs()
     }
 }
 
 #[derive(Clone, Copy)]
-pub enum LpUartFifoWaterMark {}
+#[repr(u8)]
+pub enum LpUartFIFOSize {
+    Size1 = 0,
+    Size4 = 1,
+    Size8 = 2,
+    Size16 = 3,
+    Size32 = 4,
+    Size64 = 5,
+    Size128 = 6,
+    Size256 = 7,
+}
 
 pub struct Disabled<'a, const N: u8> {
     lpuart: &'a Instance<N>,
@@ -220,6 +306,7 @@ impl<'a, const N: u8> Disabled<'a, N> {
         Self { lpuart, te, re }
     }
 
+    /// Set LPUART's baudrate.
     pub fn set_baud(&mut self, baud: &BaudRate) {
         self.lpuart.regs().BAUD().modify(|r| {
             r.set_BOTHEDGE(baud.bothedge);
@@ -228,12 +315,48 @@ impl<'a, const N: u8> Disabled<'a, N> {
         });
     }
 
+    /// Set LPUART's parity.
+    /// When `parity` is [`None`] means disable parity check.
     pub fn set_parity(&mut self, parity: Option<ParityMode>) {
         self.lpuart.regs().CTRL().modify(|r| {
             r.set_PE(parity.is_some());
             r.set_M(parity.is_some());
             r.set_PT(parity.unwrap_or(ParityMode::Even) as u32 == 1);
         });
+    }
+
+    /// Set LPUART's TX FIFO.
+    pub fn set_tx_fifo(&mut self, watermark: Option<u8>) {
+        match watermark {
+            Some(watermark) => {
+                self.lpuart
+                    .regs()
+                    .WATER()
+                    .modify(|r| r.set_TXWATER(watermark as u8));
+                self.lpuart.regs().FIFO().modify(|r| r.set_TXFE(true));
+                self.lpuart.regs().FIFO().modify(|r| r.set_TXFLUSH(true));
+            }
+            None => {
+                self.lpuart.regs().FIFO().modify(|r| r.set_TXFE(false));
+            }
+        }
+    }
+
+    // Set LPUART's RX FIFO.
+    pub fn set_rx_fifo(&mut self, watermark: Option<u8>) {
+        match watermark {
+            Some(watermark) => {
+                self.lpuart
+                    .regs()
+                    .WATER()
+                    .modify(|r| r.set_RXWATER(watermark as u8));
+                self.lpuart.regs().FIFO().modify(|r| r.set_RXFE(true));
+                self.lpuart.regs().FIFO().modify(|r| r.set_RXFLUSH(true));
+            }
+            None => {
+                self.lpuart.regs().FIFO().modify(|r| r.set_RXFE(false));
+            }
+        }
     }
 }
 
@@ -253,7 +376,9 @@ impl ParityMode {
 /// LPUART Direction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
+    /// Transmit direction, from MCU to external Peripheral.
     TX,
+    /// Receive direction, from external Peripheral to MCU.
     RX,
 }
 

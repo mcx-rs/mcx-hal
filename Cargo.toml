@@ -22,8 +22,11 @@ critical-section = { version = "1", optional = true }
 panic-halt = "1"
 cortex-m-rt = "0.7"
 
+heapless = "0.8"
+
 rtic = { version = "2.1.2", features = ["thumbv8main-backend"] }
 rtic-monotonics = { version = "2.0.3", features = ["cortex-m-systick"] }
+rtic-sync = "1.3"
 
 [features]
 rt = ["mcx-pac/rt"]

@@ -59,9 +59,6 @@ pub mod prelude {
     pub use crate::scg::{Config as SCGConfig, FIRC, SCG};
 
     pub use crate::syscon::*;
-
-    pub use eh1::digital::{InputPin, OutputPin, StatefulOutputPin};
-    pub use eio06::*;
 }
 
 #[cfg(not(feature = "device"))]
