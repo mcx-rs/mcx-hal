@@ -54,7 +54,7 @@ pub mod prelude {
         BaudRate, Direction as LpUartDirection, LpUart, LpUartInterrupt, Pins as LpUartPins,
     };
 
-    pub use crate::port::{device::*, PortPin};
+    pub use crate::port::{device::*, Port, PortPin};
 
     pub use crate::scg::{Config as SCGConfig, FIRC, SCG};
 

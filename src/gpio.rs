@@ -2,200 +2,278 @@
 //!
 //! # Example
 //!
-//! ```no_run
-//! use embedded_hal::digital::StatefulOutputPin;
-//! use mcx_hal::gpio::{GPIOIRQConfiguration, Output, GPIO};
-//! use mcx_hal::pac;
-//! use mcx_hal::port::{Port0, PortPin};
-//!
+//! ```rust
 //! let port0: Port0 = Port0::new(unsafe { pac::port::PORT0::instance() });
-//! let mut gpio0: GPIO<0> = GPIO::new(unsafe { pac::gpio::GPIO0::instance() });
+//! let mut gpio0 = GPIO::new(unsafe { pac::gpio::GPIO0::instance() });
+//! let led = gpio0.output(port0.p0);
 //!
-//! let mut led: Output<PortPin<0, 0>> = gpio0.output(port0.p0);
+//! // mcx-hal methods
+//! led.set();
+//! led.clear();
+//! led.toggle();
 //!
-//! led.toggle()?;
-//! led.set_high()?;
-//! led.is_set_high()?;
+//! // embedded-hal methods
+//! led.set_high().unwrap();
+//! led.set_low().unwrap();
+//! led.toggle().unwrap();
 //!
-//! let mut button = gpio0.input(led.release());
-//! button.is_high()?;
-//! button.enable_irq(GPIOIRQConfiguration::RisingEdge);
-//! button.interrupt_status()
+//! // use interrupt
+//! let btn = gpio0.input(port0.p1);
+//! btn.set_interrupt_config(GPIOIRQConfig::InterruptFallingEdge);
+//! // clear interrupt flag
+//! btn.clear_interrupt_flag();
 //! ```
 
-use crate::syscon::{PeripheralCC, PeripheralRST};
+use crate::{
+    consts::{Const, Unsigned},
+    pac::gpio::Instance,
+    port::Port,
+    syscon::{PeripheralCC, PeripheralRST},
+};
 use core::convert::Infallible;
-use embedded_hal as ehal;
+use eh1;
 
-/// GPIO Interrupt configuration.
+/// GPIO Pin direction.
 #[derive(Clone, Copy)]
-#[repr(u8)]
-pub enum GPIOIRQConfiguration {
-    Disabled = 0b0000,
-    RisingEdgeWithDMA = 0b0001,
-    FallingEdgeWithDMA = 0b0010,
-    BothEdgeWithDMA = 0b0011,
-    RisingEdge = 0b0101,
-    FallingEdge = 0b0110,
-    BothEdge = 0b0111,
-    LowWithIRQ = 0b1000,
-    RisingEdgeWithIRQ = 0b1001,
-    FallingEdgeWithIRQ = 0b1010,
-    BothEdgeWithIRQ = 0b1011,
-    HighWithIRQ = 0b1100,
+pub enum Direction {
+    Input,
+    Output,
 }
 
-/// GPIO Interrupt channel select.
-#[derive(Clone, Copy)]
-#[repr(u8)]
-pub enum GPIOIRQSelect {
-    IRQ0 = 0,
-    IRQ1 = 1,
+/// GPIO interrupt configuration.
+#[derive(Clone, Copy, Default)]
+pub enum GPIOIRQConfig {
+    #[default]
+    Disabled = 0,
+
+    DMARisingEdge = 1,
+    DMAFallingEdge = 2,
+    DMAEitherEdge = 3,
+
+    FlagRisingEdge = 5,
+    FlagFallingEdge = 6,
+    FlagEitherEdge = 7,
+
+    InterruptLogicZero = 8,
+    InterruptRisingEdge = 9,
+    InterruptFallingEdge = 10,
+    InterruptEitherEdge = 11,
+    InterruptLogicOne = 12,
+
+    ActiveHighTriggerOutputEnable = 13,
+    ActiveLowTriggerOutputEnable = 14,
 }
 
-/// GPIO
+/// GPIO driver.
 pub struct GPIO<const N: u8> {
-    gpio: crate::pac::gpio::Instance<N>,
+    gpio: Instance<N>,
 }
+
+/// GPIO digital output pin.
+pub struct Output<P>
+where
+    P: Port,
+{
+    pin: P,
+    gpio: crate::pac::gpio::GPIO,
+}
+
+/// GPIO digital input pin.
+pub struct Input<P>
+where
+    P: Port,
+{
+    pin: P,
+    gpio: crate::pac::gpio::GPIO,
+}
+
 impl<const N: u8> GPIO<N> {
-    /// Create a new GPIO instance.
-    pub fn new(mut gpio: crate::pac::gpio::Instance<N>) -> Self
+    /// Create a new GPIO driver.
+    pub fn new(mut gpio: Instance<N>) -> Self
     where
-        crate::pac::gpio::Instance<N>: crate::syscon::PeripheralRST + crate::syscon::PeripheralCC,
+        Instance<N>: PeripheralRST + PeripheralCC,
     {
         gpio.reset();
         gpio.enable_clock(true);
         Self { gpio }
     }
 
-    /// Set a pin to GPIO output
-    ///
-    /// Use `crate::port::Port` because any Port Pin can be configured as GPIO with MUX 0.
-    pub fn output<P>(&mut self, mut pin: P) -> Output<P>
-    where
-        P: crate::port::Port,
-    {
-        self.gpio.regs().PDDR().modify(|r| {
-            r.set_PDD(pin.pin() as usize, true);
-        });
-        pin.set_mux(0);
-        let index = pin.pin();
-        Output {
-            pin,
-            gpio: self.gpio.regs(),
-            index,
-        }
-    }
-
-    /// Set a pin to GPIO output
-    ///
-    /// Use `crate::port::Port` because any Port Pin can be configured as GPIO with MUX 0.
+    /// Set a pin into GPIO digital input pin.
+    /// See also [`Input`].
     pub fn input<P>(&mut self, mut pin: P) -> Input<P>
     where
-        P: crate::port::Port,
+        P: Port<PORT = Const<N>>,
     {
-        self.gpio.regs().PDDR().modify(|r| {
-            r.set_PDD(pin.pin() as usize, false);
-        });
         pin.set_mux(0);
-        let index = pin.pin();
+        self.regs()
+            .PDDR()
+            .modify(|r| r.set_PDD(P::PIN::USIZE, false));
+
         Input {
             pin,
-            gpio: self.gpio.regs(),
-            index,
+            gpio: self.regs(),
         }
     }
-}
 
-/// An GPIO Input pin.
-pub struct Input<P> {
-    pin: P,
-    gpio: crate::pac::gpio::GPIO,
-    index: u8,
+    /// Set a pin into GPIO digital output pin.
+    /// See also [`Output`].
+    pub fn output<P>(&mut self, mut pin: P) -> Output<P>
+    where
+        P: Port<PORT = Const<N>>,
+    {
+        pin.set_mux(0);
+        self.regs()
+            .PDDR()
+            .modify(|r| r.set_PDD(P::PIN::USIZE, true));
+
+        Output {
+            pin,
+            gpio: self.regs(),
+        }
+    }
+
+    fn regs(&self) -> crate::pac::gpio::GPIO {
+        self.gpio.regs()
+    }
 }
-impl<P> Input<P> {
+impl<P: Port> Output<P> {
+    /// Get current GPIO pin mask.
+    pub const fn mask(&self) -> u32 {
+        1 << P::PIN::USIZE as u32
+    }
+
+    /// Set GPIO pin output.
+    pub fn set(&self) {
+        self.gpio.PSOR().write(|r| r.0 = self.mask());
+    }
+
+    /// Clear GPIO pin output.
+    pub fn clear(&self) {
+        self.gpio.PCOR().write(|r| r.0 = self.mask());
+    }
+
+    /// Toggle GPIO pin output.
+    pub fn toggle(&self) {
+        self.gpio.PTOR().write(|r| r.0 = self.mask());
+    }
+
+    /// Return `true` if GPIO pin is set.
+    pub fn is_set(&self) -> bool {
+        self.gpio.PDR(P::PIN::USIZE).read().0 != 0
+    }
+
+    /// Return `true` if GPIO pin is cleared.
+    pub fn is_clear(&self) -> bool {
+        self.gpio.PDR(P::PIN::USIZE).read().0 == 0
+    }
+
+    /// Release a GPIO pin.
     pub fn release(self) -> P {
         self.pin
     }
 
-    pub fn enable_irq(&mut self, cfg: GPIOIRQConfiguration) {
-        self.gpio
-            .ICR(self.index as usize)
-            .write(|r| r.set_ISF(true));
-        self.gpio
-            .ICR(self.index as usize)
-            .write(|r| r.set_IRQC(cfg as u8));
+    /// Access the raw pin.
+    pub fn pin(&self) -> &P {
+        &self.pin
     }
 
-    pub fn interrupt_status(&self) -> bool {
-        self.gpio.ICR(self.index as usize).read().ISF()
-    }
-
-    pub fn interrupt_configuration(&self) -> GPIOIRQConfiguration {
-        unsafe { core::mem::transmute(self.gpio.ICR(self.index as usize).read().IRQC()) }
+    /// Access the mutable raw pin.
+    pub fn mut_pin(&mut self) -> &mut P {
+        &mut self.pin
     }
 }
-unsafe impl<P: Send> Send for Input<P> {}
-unsafe impl<P: Sync> Sync for Input<P> {}
-impl<P> ehal::digital::ErrorType for Input<P> {
+impl<P: Port> Input<P> {
+    /// Get current GPIO pin mask.
+    pub const fn mask(&self) -> u32 {
+        1 << P::PIN::USIZE as u32
+    }
+
+    /// Return `true` if GPIO pin is set.
+    pub fn is_set(&self) -> bool {
+        self.gpio.PDR(P::PIN::USIZE).read().0 != 0
+    }
+
+    /// Return `true` if GPIO pin is cleared.
+    pub fn is_clear(&self) -> bool {
+        self.gpio.PDR(P::PIN::USIZE).read().0 == 0
+    }
+
+    /// Set GPIO pin's interrupt configuration.
+    /// Use [`GPIOIRQ::Disabled`] to disable GPIO pin's interrupt.
+    pub fn set_interrupt_config(&mut self, irq: GPIOIRQConfig) {
+        self.gpio.ICR(P::PIN::USIZE).write(|r| {
+            r.set_ISF(true);
+            r.set_IRQC(irq as u8);
+        });
+    }
+
+    /// Read GPIO pin's interrupt flag.
+    #[inline]
+    pub fn get_interrupt_flag(&self) -> bool {
+        self.gpio.ICR(P::PIN::USIZE).read().ISF()
+    }
+
+    /// Clear GPIO pin's interrupt flag by setting bit.
+    pub fn clear_interrupt_flag(&mut self) {
+        self.gpio.ICR(P::PIN::USIZE).modify(|r| r.set_ISF(true));
+    }
+
+    /// Release a GPIO pin.
+    pub fn release(self) -> P {
+        self.pin
+    }
+
+    /// Access the raw pin.
+    pub fn pin(&self) -> &P {
+        &self.pin
+    }
+
+    /// Access the mutable raw pin.
+    pub fn mut_pin(&mut self) -> &mut P {
+        &mut self.pin
+    }
+}
+
+impl<P: Port> eh1::digital::ErrorType for Input<P> {
     type Error = Infallible;
 }
-impl<P> ehal::digital::InputPin for Input<P> {
+impl<P: Port> eh1::digital::ErrorType for Output<P> {
+    type Error = Infallible;
+}
+impl<P: Port> eh1::digital::InputPin for Input<P> {
     fn is_high(&mut self) -> Result<bool, Self::Error> {
-        Ok(self.gpio.PDIR().read().PDI(self.index as usize))
+        Ok(self.is_set())
     }
-    fn is_low(&mut self) -> Result<bool, Self::Error> {
-        Ok(!self.gpio.PDIR().read().PDI(self.index as usize))
-    }
-}
 
-/// An GPIO Output pin.
-pub struct Output<P> {
-    pin: P,
-    gpio: crate::pac::gpio::GPIO,
-    index: u8,
-}
-impl<P> Output<P> {
-    pub fn release(self) -> P {
-        self.pin
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        Ok(self.is_clear())
     }
 }
-unsafe impl<P: Send> Send for Output<P> {}
-unsafe impl<P: Sync> Sync for Output<P> {}
-impl<P> ehal::digital::ErrorType for Output<P> {
-    type Error = Infallible;
-}
-impl<P> ehal::digital::OutputPin for Output<P> {
+impl<P: Port> eh1::digital::OutputPin for Output<P> {
     fn set_high(&mut self) -> Result<(), Self::Error> {
-        self.gpio
-            .PSOR()
-            .write(|r| r.set_PTSO(self.index as usize, true));
+        self.set();
         Ok(())
     }
     fn set_low(&mut self) -> Result<(), Self::Error> {
-        self.gpio
-            .PCOR()
-            .write(|r| r.set_PTCO(self.index as usize, true));
+        self.clear();
         Ok(())
     }
-    fn set_state(&mut self, state: embedded_hal::digital::PinState) -> Result<(), Self::Error> {
+    fn set_state(&mut self, state: eh1::digital::PinState) -> Result<(), Self::Error> {
         self.gpio
-            .PDOR()
-            .modify(|r| r.set_PDO(self.index as usize, state.into()));
+            .PDR(P::PIN::USIZE)
+            .write(|r| r.set_PD(state.into()));
         Ok(())
     }
 }
-impl<P> ehal::digital::StatefulOutputPin for Output<P> {
+impl<P: Port> eh1::digital::StatefulOutputPin for Output<P> {
     fn is_set_high(&mut self) -> Result<bool, Self::Error> {
-        Ok(self.gpio.PDOR().read().PDO(self.index as usize))
+        Ok(self.is_set())
     }
     fn is_set_low(&mut self) -> Result<bool, Self::Error> {
-        Ok(!self.gpio.PDOR().read().PDO(self.index as usize))
+        Ok(self.is_clear())
     }
     fn toggle(&mut self) -> Result<(), Self::Error> {
-        self.gpio
-            .PTOR()
-            .write(|r| r.set_PTTO(self.index as usize, true));
+        Output::<P>::toggle(self);
         Ok(())
     }
 }
