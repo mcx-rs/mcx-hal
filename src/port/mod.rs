@@ -1,6 +1,7 @@
 //! PORT configuration and PIN constrain for NXP MCX Series MCUs.
 
 use crate::{
+    consts::{Const, Unsigned},
     pac::{
         common::{Reg, RW},
         port::{regs::PCR, Instance, LEN},
@@ -16,44 +17,19 @@ pub(crate) use scg::scg;
 
 /// Port trait for MCX N & A PORT peripheral.
 pub trait Port: Sealed {
+    type PORT: Unsigned;
+    type PIN: Unsigned;
+
     fn mux(&self) -> u8;
     fn set_mux(&mut self, v: u8);
 
-    fn port(&self) -> u8;
-    fn pin(&self) -> u8;
+    // fn port(&self) -> u8;
+    // fn pin(&self) -> u8;
 
     fn floating(&mut self);
     fn pull(&mut self, up: bool);
     fn open_drain(&mut self, enable: bool);
     fn analog(&mut self, enable: bool);
-}
-
-pub mod consts {
-    #[derive(Debug)]
-    pub enum Const<const N: u8> {}
-    pub trait Unsigned {
-        const USIZE: usize;
-        fn to_usize() -> usize {
-            Self::USIZE
-        }
-    }
-    impl<const N: u8> Unsigned for Const<N> {
-        const USIZE: usize = N as usize;
-    }
-    macro_rules! ux {
-        ($($Ux:ident => $N:literal,)+) => {
-            $(pub type $Ux = Const<$N>;)+
-        };
-    }
-    ux! {
-        U0 => 0, U1 => 1, U2 => 2, U3 => 3, U4 => 4,
-        U5 => 5, U6 => 6, U7 => 7, U8 => 8, U9 => 9,
-        U10 => 10, U11 => 11, U12 => 12, U13 => 13, U14 => 14,
-        U15 => 15, U16 => 16, U17 => 17, U18 => 18, U19 => 19,
-        U20 => 20, U21 => 21, U22 => 22, U23 => 23, U24 => 24,
-        U25 => 25, U26 => 26, U27 => 27, U28 => 28, U29 => 29,
-        U30 => 30, U31 => 31,
-    }
 }
 
 pub struct PortPin<const PORT: u8, const PIN: u8>;
@@ -72,6 +48,9 @@ impl<const PORT: u8, const PIN: u8> PortPin<PORT, PIN> {
     }
 }
 impl<const PORT: u8, const PIN: u8> Port for PortPin<PORT, PIN> {
+    type PORT = Const<PORT>;
+    type PIN = Const<PIN>;
+
     #[inline(always)]
     fn mux(&self) -> u8 {
         self.pcr().read().MUX()
@@ -80,14 +59,7 @@ impl<const PORT: u8, const PIN: u8> Port for PortPin<PORT, PIN> {
     fn set_mux(&mut self, v: u8) {
         self.pcr().modify(|r| r.set_MUX(v));
     }
-    #[inline(always)]
-    fn port(&self) -> u8 {
-        PORT
-    }
-    #[inline(always)]
-    fn pin(&self) -> u8 {
-        PIN
-    }
+
     #[inline(always)]
     fn floating(&mut self) {
         self.pcr().modify(|r| r.set_PE(false));
@@ -110,7 +82,7 @@ impl<const PORT: u8, const PIN: u8> Port for PortPin<PORT, PIN> {
 }
 
 #[cfg(feature = "device")]
-mod device {
+pub mod device {
     use cfg_if::cfg_if;
     cfg_if! {
         if #[cfg(feature = "mcxa0")] {

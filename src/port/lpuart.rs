@@ -25,7 +25,7 @@ pub fn prepare<P: Pin>(p: &mut P) {
 macro_rules! lpuart {
     (pin: $pin:ty, module: $module:ident, signal: $signal:ident, mux: $mux:expr) => {
         impl crate::port::lpuart::Pin for $pin {
-            type Module = crate::port::consts::$module;
+            type Module = crate::consts::$module;
             type Signal = crate::port::lpuart::$signal;
             const MUX: u8 = $mux;
         }

@@ -69,7 +69,7 @@ pub fn prepare<P: Pin>(p: &mut P) {
 macro_rules! scg {
     (pin: $pin:ty, module: $module:ident, signal: $signal:ident) => {
         impl crate::port::scg::Pin for $pin {
-            type Module = crate::port::consts::$module;
+            type Module = crate::consts::$module;
             type Signal = crate::port::scg::$signal;
         }
     };
