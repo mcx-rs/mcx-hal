@@ -31,8 +31,10 @@
 //!                                           └──────┘                               
 
 mod firc;
+mod pll;
 mod sosc;
 pub use firc::FIRC;
+pub use pll::*;
 pub use sosc::SOSC;
 
 use crate::{
@@ -54,6 +56,8 @@ pub enum SCGError {
 
     FIRCBusy,
     FIRCError,
+
+    SPLLBusy,
 
     InvalidConfig,
 }
@@ -86,7 +90,7 @@ impl MainClockSource {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Config {
     pub sosc: Option<SOSC>,
     pub sosc_stop_en: bool,
@@ -98,6 +102,9 @@ pub struct Config {
     pub firc_sclk_en: bool,
     pub firc_fclk_en: bool,
     pub firc_stop_en: bool,
+
+    pub spll: Option<PllConfig>,
+    pub spll_stop_en: bool,
 
     pub main_clock_source: MainClockSource,
 }
@@ -114,6 +121,9 @@ impl Default for Config {
             firc_sclk_en: true,
             firc_fclk_en: true,
             firc_stop_en: false,
+
+            spll: None,
+            spll_stop_en: false,
 
             main_clock_source: MainClockSource::default(),
         }
@@ -208,6 +218,12 @@ impl<PINS> SCG<PINS> {
                 config.firc_sclk_en,
             )?,
             None => FIRC::disable(self.scg.regs())?,
+        }
+
+        // configure SPLL
+        match config.spll {
+            Some(spll) => PllConfig::enable_spll(self.scg.regs(), spll, config.spll_stop_en)?,
+            None => PllConfig::disable_spll(self.scg.regs())?,
         }
 
         // Switch Main Clock Source

@@ -56,7 +56,7 @@ pub mod prelude {
 
     pub use crate::port::{device::*, Port, PortPin};
 
-    pub use crate::scg::{Config as SCGConfig, FIRC, SCG};
+    pub use crate::scg::{Config as SCGConfig, PllConfig, PllSource, FIRC, SCG};
 
     pub use crate::syscon::*;
 }

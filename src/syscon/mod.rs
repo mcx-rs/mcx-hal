@@ -6,7 +6,7 @@ pub use syscon_divider::*;
 #[cfg(feature = "mcxa")]
 mod mrcc_divider;
 #[cfg(feature = "mcxa")]
-pub(crate) use mrcc_divider::*;
+pub use mrcc_divider::*;
 
 use crate::private;
 

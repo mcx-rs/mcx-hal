@@ -33,3 +33,26 @@ macro_rules! generate_mrcc_clock_source {
 
 pub(crate) use generate_mrcc_clock_source;
 pub(crate) use generate_mrcc_divider;
+
+#[derive(Clone, Copy)]
+pub enum ClkOutSource {
+    FroLF = 0,
+    FroHfDiv = 1,
+    ClkIn = 2,
+    Clk16K = 3,
+    SPll = 5,
+    SlowClk = 6,
+    NoClock = 7,
+}
+
+generate_mrcc_clock_source!(
+    setup_clkout_clock_source,
+    MRCC_CLKOUT_CLKSEL,
+    ClkOutSource,
+    "Setup CLKOUT clock source."
+);
+generate_mrcc_divider!(
+    setup_clkout_divider,
+    MRCC_CLKOUT_CLKDIV,
+    "Setup CLKOUT divider."
+);
