@@ -1,8 +1,7 @@
-use crate::port::PortPin;
+use crate::port::*;
 use crate::private;
 use crate::syscon::{PeripheralCC, PeripheralRST};
 
-use crate::port::{lpuart, scg};
 pub struct Port0 {
     _port: crate::pac::port::PORT0,
     pub p0: PortPin<0, 0>,

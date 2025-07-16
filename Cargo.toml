@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-mcx-pac = { version = "0.1.6", default-features = false }
+mcx-pac = { version = "0.1.7", default-features = false }
 cortex-m = { version = "0.7" }
 cortex-m-rt = { version = "0.7" }
 # embedded-hal = "1"
@@ -34,7 +34,7 @@ device = []
 
 mcxa153 = ["mcx-pac/mcxa153", "mcxa0"]
 mcxa156 = ["mcx-pac/mcxa156", "mcxa1"]
-mcxa276 = ["mcx-pac/mcxa276", "mcxa2"]
+mcxa346 = ["mcx-pac/mcxa346", "mcxa2"]
 
 mcxa = ["device"]
 mcxa0 = ["mcxa", "_cs_single_core"]

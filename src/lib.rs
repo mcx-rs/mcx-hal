@@ -6,6 +6,7 @@ pub use mcx_pac as pac;
 
 pub mod device;
 pub mod gpio;
+pub mod lpspi;
 pub mod lpuart;
 pub mod port;
 pub mod scg;
@@ -46,7 +47,10 @@ mod private {
 }
 
 pub mod prelude {
-    pub use crate::pac::{self, interrupt};
+    pub use crate::pac;
+
+    #[cfg(feature = "rt")]
+    pub use crate::pac::interrupt;
 
     pub use crate::gpio::*;
 

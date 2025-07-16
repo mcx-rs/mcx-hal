@@ -5,4 +5,4 @@ rustflags = ["-Clink-arg=-Tlink.x"]
 rustflags = ["-Clink-arg=-Tlink.x"]
 
 [build]
-target = "thumbv8m.main-none-eabi"
+target = "thumbv8m.main-none-eabihf"
