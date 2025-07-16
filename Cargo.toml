@@ -32,8 +32,6 @@ rtic-sync = "1.3"
 rt = ["mcx-pac/rt"]
 device = []
 
-mcxa153 = ["mcx-pac/mcxa153", "mcxa0"]
-mcxa156 = ["mcx-pac/mcxa156", "mcxa1"]
 mcxa346 = ["mcx-pac/mcxa346", "mcxa2"]
 
 mcxa = ["device"]
